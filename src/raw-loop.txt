@@ -1,0 +1,21 @@
+    if (false)
+    {
+        rf95.waitAvailable();
+        // Just return any packets received. 
+        if (rf95.recv(rx_buf, &len))
+        {
+            delay(20); // If we dont wait a little, we could send before the other end is ready to receive
+            rf95.send(rx_buf, len);
+            rf95.waitPacketSent();
+            rf95.setModeRx();
+
+            Serial.print("Got packet: ");
+            rx_buf[len] = 0;
+            Serial.print((char*)rx_buf);
+            Serial.print(", RSSI: ");
+            Serial.println(rf95.lastRssi(), DEC);    
+        }
+        else
+            Serial.println("Rx error");
+    }
+ 
