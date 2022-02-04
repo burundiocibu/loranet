@@ -20,6 +20,7 @@ import board
 import adafruit_ssd1306
 import adafruit_rfm9x
 
+
 # Create the I2C interface.
 i2c = busio.I2C(board.SCL, board.SDA)
 
@@ -49,10 +50,6 @@ rfm9x.flags = 0 # default is 0
 tx_stats = {'count':0, 'err':0 }
 rx_stats = {'count':0, 'err':0 }
 node = {}
-
-
-def hash(msg:str):
-    return hashlib.md5(msg.encode("utf-8")).hexdigest()
 
 
 def cname(string:str) -> str:
@@ -102,22 +99,6 @@ def decode_msg(msg:str) -> dict:
     return d
 
 
-def on_connect(mqttc, obj, flags, rc):
-    print("connect rc: " + str(rc))
-
-
-def on_message(mqttc, obj, msg):
-    #print(msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
-    pass
-
-def on_publish(mqttc, obj, mid):
-    #print("publish mid: " + str(mid))
-    pass
-
-def on_log(mqttc, obj, level, string):
-    print(string)
-
-
 def on_disconnect():
     print("Disconnecting...")
 
@@ -147,107 +128,40 @@ class BaseEntity:
         self.device_class = device_class
         self.topic = "{}/{}/{}".format(self.root_topic, self.entity_class, cname(self.name))
         self.config = EntityConfig(self.name, self.device_class, device, self.topic)
+        self.state = None
 
     def publish_discovery(self):
         ha_discovery_topic = "homeassistant/{}/{}/config".format(self.entity_class, cname(self.name))
         self.mqtt_client.publish(ha_discovery_topic, json.dumps(vars(self.config)))
+        #print("{} {}".format(ha_discovery_topic, json.dumps(vars(self.config))))
 
-    def publish_state(self):
+    def publish_state(self, state=None):
+        if state is not None:
+            self.state = state
         self.mqtt_client.publish(self.config.state_topic, self.state)
-
-
-class GateEntity(BaseEntity):
-    def __init__(self, name, mqtt_client):
-        device_class = "gate"
-        entity_class = "cover"
-        super().__init__(name, device_class, entity_class, mqtt_client)
-        self.config.position_topic = f"{self.topic}/position"
-        self.config.set_position_topic = f"{self.topic}/position/command"
-        self.config.command_topic = f"{self.topic}/command"
-        ha_discovery_topic = "homeassistant/{}/{}/config".format(entity_class, cname(name))
-        self.mqtt_client.publish(ha_discovery_topic, json.dumps(vars(self.config)))
-        self.state = 'closed' # or  open, opening, closed, closing, stopped
-        self.position = 0
-
-        device_class = "battery"
-        entity_class = "sensor"
-        bname = f"{name} Battery"
-        topic = "{}/{}/{}".format(self.root_topic, entity_class, cname(bname))
-        self.battery_level = EntityConfig(bname, device_class, topic)
-        self.battery_level.unit_of_measurement = "%"
-        self.battery_level.device = self.config.device
-        ha_discovery_topic = "homeassistant/{}/{}/config".format(entity_class, cname(bname))
-        self.mqtt_client.publish(ha_discovery_topic, json.dumps(vars(self.battery_level)))
-        self.battery_level.state = 97
-
-        device_class = "time"
-        entity_class = "sensor"
-        bname = f"{name} Uptime"
-        topic = "{}/{}/{}".format(self.root_topic, entity_class, cname(bname))
-        self.uptime = EntityConfig(bname, device_class, topic)
-        self.uptime.unit_of_measurement = "%"
-        self.uptime.device = self.config.device
-        ha_discovery_topic = "homeassistant/{}/{}/config".format(entity_class, cname(bname))
-        self.mqtt_client.publish(ha_discovery_topic, json.dumps(vars(self.uptime)))
-        self.uptime.state = 0
-
-        self.mqtt_client.message_callback_add(self.config.command_topic, self.command)
-        self.mqtt_client.subscribe(self.config.command_topic)
-        self.mqtt_client.message_callback_add(self.config.set_position_topic, self.command)
-        self.mqtt_client.subscribe(self.config.set_position_topic)
-
-    def publish_state(self):
-        self.mqtt_client.publish(self.config.state_topic, self.state)
-        self.mqtt_client.publish(self.config.position_topic, self.position)
-        self.mqtt_client.publish(self.battery_level.state_topic, self.battery)
-
-    # Callback for when we receive a message
-    def command(self, client, obj, message):
-        print(f"command: {message.topic} = {message.payload}")
-        if message.topic == self.config.command_topic:
-            if message.payload == b'OPEN':
-                print("Opening")
-                self.state = "open"
-                self.position = 100
-            elif message.payload == b'CLOSE':
-                print("Closing")
-                self.state = "closed"
-                self.position = 0
-            elif message.payload == b'STOP':
-                print("Nope")
-        if message.topic == self.config.set_position_topic:
-            self.position = int(message.payload)
-            print(f"position = {int(message.payload)}")
-            if self.position > 0:
-                self.state = "open"
-            else:
-                self.sate = "closed"
-        self.publish_state()
 
 
 class BatteryLevel(BaseEntity):
     def __init__(self, name, device, mqtt_client):
         super().__init__(name, "battery", "sensor", device, mqtt_client)
-        self.unit_of_measurement = "%"
+        self.config.unit_of_measurement = "%"
         self.publish_discovery()
-        self.state = 97
-
-
-class Uptime(BaseEntity):
-    def __init__(self, name, device, mqtt_client):
-        super().__init__(name, "time", "sensor", device, mqtt_client)
-        self.unit_of_measurement = "s"
-        self.publish_discovery()
-        self.state = 0
 
 
 class RSSI(BaseEntity):
     def __init__(self, name, device, mqtt_client):
         super().__init__(name, "signal_strength", "sensor", device, mqtt_client)
-        self.unit_of_measurement = "dBm"
+        self.config.unit_of_measurement = "dBm"
         self.publish_discovery()
-        self.state = 0
-    
+
+
+class Sensor(BaseEntity):
+    def __init__(self, name, device, mqtt_client, units=None):
+        super().__init__(name, "None", "sensor", device, mqtt_client)
+        if units is not None:
+            self.config.unit_of_measurement = units
+        self.publish_discovery()
+
 
 class Gate(BaseEntity):
     def __init__(self, name, device, mqtt_client):
@@ -265,42 +179,35 @@ class Gate(BaseEntity):
         self.mqtt_client.subscribe(self.config.set_position_topic)
 
     def publish_state(self):
-        super().publish_state
+        self.mqtt_client.publish(self.config.state_topic, self.state)
         self.mqtt_client.publish(self.config.position_topic, self.position)
 
     # Callback for when we receive a message
     def command(self, client, obj, message):
-        print(f"command: {message.topic} = {message.payload}")
         if message.topic == self.config.command_topic:
             if message.payload == b'OPEN':
                 print("Opening")
-                self.state = "open"
                 self.position = 100
             elif message.payload == b'CLOSE':
                 print("Closing")
-                self.state = "closed"
                 self.position = 0
             elif message.payload == b'STOP':
                 print("Nope")
         if message.topic == self.config.set_position_topic:
             self.position = int(message.payload)
             print(f"position = {int(message.payload)}")
-            if self.position > 0:
-                self.state = "open"
-            else:
-                self.sate = "closed"
+        if self.position > 0:
+            self.state = "open"
+        else:
+            self.state = "closed"
         self.publish_state()
 
 
 def main():
-    global driveway_gate, gate_manager, client,rc, mid
     mqtt_username = os.environ.get("mqtt_username", "")
     mqtt_password = os.environ.get("mqtt_password", "")
 
     client = mqtt.Client()
-    client.on_message = on_message
-    client.on_connect = on_connect
-    client.on_publish = on_publish
     client.on_disconnect = on_disconnect
 
     if len(mqtt_username) and len(mqtt_password):
@@ -313,12 +220,12 @@ def main():
 
     driveway_gate_dev = DeviceConfig("Gate Manager")
     driveway_gate = Gate("Driveway Gate", driveway_gate_dev, client)
-    driveway_gate.publish_state()
-    driveway_gate_battery = BatteryLevel("Driveway Gate", driveway_gate_dev, client)
-    driveway_gate_battery.publish_state()
+    driveway_gate_battery = BatteryLevel("Driveway Gate Battery", driveway_gate_dev, client)
+    driveway_gate_rssi = RSSI("Driveway Gate RSSI", driveway_gate_dev, client)
+    driveway_gate_tx_rtt = Sensor("Driveway Gate tx rtt", driveway_gate_dev, client, "ms")
 
     loranet_dev = DeviceConfig("loranet-bridge")
-    loranet_uptime = Uptime("LoRaNet uptime")
+    loranet_uptime = Sensor("LoRaNet uptime", loranet_dev, client, "s")
 
     start_time = datetime.datetime.now()
     # messages:
@@ -336,14 +243,17 @@ def main():
             display.text(f"SNR: {rfm9x.last_snr} dB", 0, 20, 1)
             node = decode_msg(packet)
             display.show()
+            driveway_gate_rssi.publish_state(rfm9x.last_rssi)
+            driveway_gate_tx_rtt.publish_state(tx_stats['rtt'])
 
             pwr = int(node['txpwr'])
             if pwr != tx_power:
                 tx(f"P:{tx_power}")
 
         driveway_gate.publish_state()
-        driveway_gate_battery.publish_state()
-        loranet_uptime.state = (datetime.datetime.now().now() - start_time).seconds()
+        driveway_gate_battery.publish_state(99)
+
+        loranet_uptime.state = (datetime.datetime.now() - start_time).seconds
         loranet_uptime.publish_state()
 
         time.sleep(5)
