@@ -1,6 +1,12 @@
 ## LoRaNet bridge to MQTT
 
-python code to talk to a Adafruit LoRa feather attached to a raspberry pi.
+Python code to talk to a Adafruit LoRa feather via a LoRa bonnet attached to a raspberry pi.
+
+platform-io is the dev env for the Adafruit feather (avr 32u4 + )
+
+
+
+## Not Inventing it here
 
 
 Ideas on making a LoRa <-> MQTT gateway and LoRa devices to deploy
@@ -21,3 +27,23 @@ https://www.mysensors.org/build/raspberry
 ^ this would work. I don't like it
 
 Just do my own mqtt 'client'
+
+## LoRaNet 
+
+### LoRa <-> MQTT protocol
+
+
+S   Status request
+S,p=v,[p=v,...] Status response
+C: close gate
+O: Open gate
+Pnnn: set power to nnn
+
+Parameters (p in status response):
+gpos: gate position, int,  0-100
+gvb:  gate battery voltage, float, 0..15
+gc:   gate closed, bool, 0|1
+fvb:  feather battery voltage, float, 0..5 
+rssi: receive signal strength indicator, int, -128..0
+snr:  receive signal to noise ratio, float, ??
+txpwr: transmit power, int, 3..23

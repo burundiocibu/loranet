@@ -3,13 +3,13 @@
 
 from audioop import add
 from copyreg import add_extension
+import datetime
 from http.client import GATEWAY_TIMEOUT
+import json
+import logging
 import os
 import platform
-import json
 from socket import MsgFlag
-import hashlib
-import datetime
 
 import paho.mqtt.client as mqtt
 
@@ -29,78 +29,89 @@ reset_pin = DigitalInOut(board.D4)
 display = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
 # Clear the display.
 display.fill(0)
-display.text('LoRa mqtt bridge', 0, 0, 1)
+display.text('LoRaNet', 0, 0, 1)
 display.show()
 
-# Configure LoRa Radio, https://circuitpython.readthedocs.io/projects/rfm9x/en/latest/
-# https://github.com/adafruit/Adafruit_CircuitPython_RFM9x
-CS = DigitalInOut(board.CE1)
-RESET = DigitalInOut(board.D25)
-spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
-rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, 915.0) # 915 Mhz
-tx_power = 23
-rfm9x.tx_power = tx_power
+logger = logging.getLogger(__name__)
 
+class LoRaBase():
+    def __init__(self):
+        # Configure LoRa Radio, https://circuitpython.readthedocs.io/projects/rfm9x/en/latest/
+        # https://github.com/adafruit/Adafruit_CircuitPython_RFM9x
+        # http://www.airspayce.com/mikem/arduino/RadioHead/classRH__RF95.html
 
-rfm9x.destination = 2 #  default is 255 (broadcast) 
-rfm9x.node = 1 # RH calls this source, default is 255 (broadcast)
-rfm9x.flags = 0 # default is 0
+        CS = DigitalInOut(board.CE1)
+        RESET = DigitalInOut(board.D25)
+        self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+        self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
+        self.tx_power = 13
+        self.rfm9x.tx_power = self.tx_power
+        self.rfm9x.node = 1
+        self.rfm9x.flags = 0 # default is 0
+        self.tx_stats = {'count':0, 'err':0 }
+        self.rx_stats = {'count':0, 'err':0 }
+        self.msg = None # most recent received message
 
+    def print_stats(self, msg:str) -> None:
+        logger.debug(f"{msg}  tx:{self.tx_stats}  rx:{self.rx_stats}  msg:{self.msg}")
 
-tx_stats = {'count':0, 'err':0 }
-rx_stats = {'count':0, 'err':0 }
-node = {}
+    def tx(self, dest, msg:str) -> bool:
+        t0 = time.perf_counter()
+        self.rfm9x.destination = dest #  default is 255 (broadcast) 
+        self.tx_stats['count'] += 1
+        if not self.rfm9x.send_with_ack(bytes(msg, "utf-8")):
+            self.tx_stats['err'] += 1
+            self.print_stats("noack")
+            return False
+        self.tx_stats['rtt'] = round(1000 * (time.perf_counter() - t0), 1)
+        self.tx_stats['rssi'] = self.rfm9x.last_rssi
+        self.tx_stats['snr'] = self.rfm9x.last_snr
+        self.tx_stats['txpwr'] = self.rfm9x.tx_power
+        if True or self.tx_stats['count'] % 10 == 0:
+            self.print_stats("ok")
+        return True
 
+    def rx(self, sender, timeout:float = 0.5):
+        t0 = time.perf_counter()
+        self.rfm9x.receive_timeout = timeout # seconds
+        self.rfm9x.destination = sender 
+        packet = self.rfm9x.receive(with_ack=True)
+        self.rx_stats['rtt'] = round(1000 * (time.perf_counter() - t0),)
+        self.msg = packet
+        if packet is None:
+            self.rx_stats['err'] += 1
+            self.print_stats('timeout')
+            return None
+        self.rx_stats['count'] += 1
+        return packet
+        
+    # note this has to be seperate since it can't ack and broadcast
+    def broadcast(self, msg:str) -> None:
+        self.rfm9x.destination = 255 #  default is 255 (broadcast) 
+        self.rfm9x.send(bytes(msg, "utf-8"))
 
-def cname(string:str) -> str:
-    return string.replace(" ","-").lower()
+    # note this has to be seperate since it can't ack and broadcast
+    def listen(self, timeout:float = 1):
+        self.rfm9x.destination = 255 #  default is 255 (broadcast) 
+        self.rfm9x.receive_timeout = timeout # seconds
+        packet = self.rfm9x.recive(with_header=True)
+        return int(packet[1]), packet[4:]
 
-
-def print_stats(msg:str) -> None:
-    #print(f"{msg}  tx:{tx_stats}  rx:{rx_stats}  node:{node}")
-    pass
-
-
-def lora_tx(msg:str) -> bool:
-    t0 = time.perf_counter()
-    tx_stats['count'] += 1
-    if not rfm9x.send_with_ack(bytes(msg, "utf-8")):
-        tx_stats['err'] += 1
-        print_stats("noack")
-        return False
-    tx_stats['rtt'] = round(1000 * (time.perf_counter() - t0), 1)
-    tx_stats['rssi'] = rfm9x.last_rssi
-    tx_stats['snr'] = rfm9x.last_snr
-    tx_stats['txpwr'] = rfm9x.tx_power
-    if True or tx_stats['count'] % 10 == 0:
-        print_stats("ok")
-    return True
-    
-
-def lora_rx(timeout:float = 0.5):
-    t0 = time.perf_counter()
-    rfm9x.receive_timeout = timeout # seconds
-    packet = rfm9x.receive(with_ack=True)
-    rx_stats['rtt'] = round(1000 * (time.perf_counter() - t0),)
-    if packet is None:
-        rx_stats['err'] += 1
-        print_stats('timeout')
-    else:
-        rx_stats['count'] += 1
-    return packet
-
-
-def decode_msg(msg:str) -> dict:
-    d = {}
-    for s in msg.decode().split(","):
-        if len(s):
-            n,v = s.split(':')
-            d[n] = v
-    return d
+    def decode_msg(self, msg:str) -> dict:
+        d = {}
+        for s in msg.decode().split(","):
+            if len(s):
+                n,v = s.split(':')
+                d[n] = v
+        return d
 
 
 def on_disconnect():
     print("Disconnecting...")
+
+
+def cname(string:str) -> str:
+    return string.replace(" ","-").lower()
 
 
 class DeviceConfig:
@@ -120,7 +131,8 @@ class EntityConfig:
         self.device = vars(device)
 
 class BaseEntity:
-    def __init__(self, name, device_class, entity_class, device, mqtt_client, root_topic="loranet"):
+    def __init__(self, name, device_class, entity_class, 
+    device, mqtt_client, root_topic="loranet"):
         self.name = name
         self.root_topic = root_topic
         self.mqtt_client = mqtt_client
@@ -203,7 +215,62 @@ class Gate(BaseEntity):
         self.publish_state()
 
 
+
+class LoRaEndpoint():
+    def __init__(self, name:str, id:int):
+        self.id = id
+        self.name = name
+    
+
+
+def run(client, radio):
+    client.loop_start()
+    start_time = datetime.datetime.now()
+
+    driveway_gate_dev = DeviceConfig("Gate Manager")
+    driveway_gate = Gate("Driveway Gate", driveway_gate_dev, client)
+    driveway_gate_battery = BatteryLevel("Driveway Gate Battery", driveway_gate_dev, client)
+    driveway_gate_rssi = RSSI("Driveway Gate RSSI", driveway_gate_dev, client)
+    driveway_gate_tx_rtt = Sensor("Driveway Gate tx rtt", driveway_gate_dev, client, "ms")
+
+    loranet_dev = DeviceConfig("loranet-bridge")
+    loranet_uptime = Sensor("LoRaNet uptime", loranet_dev, client, "s")
+
+    # see readme for a dictionary of messages
+    while True:
+        if not radio.tx(2, "S"):
+            continue
+
+        packet = radio.rx(sender=2, timeout=0.75)
+        if packet is not None:
+            display.fill(0)
+            display.text(f"RSSI: {radio.rfm9x.last_rssi} dB", 0, 10, 1)
+            display.text(f"SNR: {radio.rfm9x.last_snr} dB", 0, 20, 1)
+            node = radio.decode_msg(packet)
+            display.show()
+            logger.info(packet)
+            driveway_gate_rssi.publish_state(radio.rfm9x.last_rssi)
+            driveway_gate_tx_rtt.publish_state(radio.tx_stats['rtt'])
+
+            pwr = int(node['txpwr'])
+            if pwr != radio.tx_power:
+                radio.tx(2, f"P:{radio.tx_power}")
+
+        driveway_gate.publish_state()
+        driveway_gate_battery.publish_state(99)
+
+        loranet_uptime.state = (datetime.datetime.now() - start_time).seconds
+        loranet_uptime.publish_state()
+
+        time.sleep(5)
+
+
 def main():
+    # Eventually may put argparse/config file processing here.
+    logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
+
+    radio = LoRaBase()
+
     mqtt_username = os.environ.get("mqtt_username", "")
     mqtt_password = os.environ.get("mqtt_password", "")
 
@@ -216,47 +283,9 @@ def main():
         print("No username/password specified")
 
     client.connect("duckling.grootland")
-    client.loop_start()
 
-    driveway_gate_dev = DeviceConfig("Gate Manager")
-    driveway_gate = Gate("Driveway Gate", driveway_gate_dev, client)
-    driveway_gate_battery = BatteryLevel("Driveway Gate Battery", driveway_gate_dev, client)
-    driveway_gate_rssi = RSSI("Driveway Gate RSSI", driveway_gate_dev, client)
-    driveway_gate_tx_rtt = Sensor("Driveway Gate tx rtt", driveway_gate_dev, client, "ms")
+    run(client, radio)
 
-    loranet_dev = DeviceConfig("loranet-bridge")
-    loranet_uptime = Sensor("LoRaNet uptime", loranet_dev, client, "s")
-
-    start_time = datetime.datetime.now()
-    # messages:
-    # S      return status message
-    # P:pwr  set tx power
-    # 
-    while True:
-        if not lora_tx("S"):
-            continue
-
-        packet = lora_rx(0.75)
-        if packet is not None:
-            display.fill(0)
-            display.text(f"RSSI: {rfm9x.last_rssi} dB", 0, 10, 1)
-            display.text(f"SNR: {rfm9x.last_snr} dB", 0, 20, 1)
-            node = decode_msg(packet)
-            display.show()
-            driveway_gate_rssi.publish_state(rfm9x.last_rssi)
-            driveway_gate_tx_rtt.publish_state(tx_stats['rtt'])
-
-            pwr = int(node['txpwr'])
-            if pwr != tx_power:
-                tx(f"P:{tx_power}")
-
-        driveway_gate.publish_state()
-        driveway_gate_battery.publish_state(99)
-
-        loranet_uptime.state = (datetime.datetime.now() - start_time).seconds
-        loranet_uptime.publish_state()
-
-        time.sleep(5)
 
 if __name__ == "__main__":
     main()
