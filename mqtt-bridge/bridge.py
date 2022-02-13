@@ -107,7 +107,11 @@ class LoRaBase():
 
 
 def on_disconnect():
-    print("Disconnecting...")
+    logger.info(" mqtt disconnecting...")
+
+
+def on_connect(mqttc, obj, flags, rc):
+    logger.info("mqtt connect rc: " + str(rc))
 
 
 def cname(string:str) -> str:
@@ -144,8 +148,10 @@ class BaseEntity:
 
     def publish_discovery(self):
         ha_discovery_topic = "homeassistant/{}/{}/config".format(self.entity_class, cname(self.name))
-        self.mqtt_client.publish(ha_discovery_topic, json.dumps(vars(self.config)))
-        #print("{} {}".format(ha_discovery_topic, json.dumps(vars(self.config))))
+        msg = json.dumps(vars(self.config))
+        logger.debug(f"discovery topic: {ha_discovery_topic}")
+        logger.debug(f"discovery msg: {msg}")
+        self.mqtt_client.publish(ha_discovery_topic, msg)
 
     def publish_state(self, state=None):
         if state is not None:
@@ -198,16 +204,16 @@ class Gate(BaseEntity):
     def command(self, client, obj, message):
         if message.topic == self.config.command_topic:
             if message.payload == b'OPEN':
-                print("Opening")
+                logger.debug("Opening")
                 self.position = 100
             elif message.payload == b'CLOSE':
-                print("Closing")
+                logger.debug("Closing")
                 self.position = 0
             elif message.payload == b'STOP':
                 print("Nope")
         if message.topic == self.config.set_position_topic:
             self.position = int(message.payload)
-            print(f"position = {int(message.payload)}")
+            logger.debug(f"position = {int(message.payload)}")
         if self.position > 0:
             self.state = "open"
         else:
@@ -215,59 +221,63 @@ class Gate(BaseEntity):
         self.publish_state()
 
 
-
-class LoRaEndpoint():
-    def __init__(self, name:str, id:int):
+class LoRaNode():
+    def __init__(self, name:str, id:int, radio, client):
         self.id = id
         self.name = name
+        self.radio = radio
+        self.client = client
     
+    def update(self):
+        pass
+
+class DrivewayGate(LoRaNode):
+    def __init__(self, name, radio, client):
+        super().__init__(name, 2, radio, client)
+        self.gate_dev = DeviceConfig(f"{self.name} Manager")
+        self.gate = Gate(self.name, self.gate_dev, client)
+        self.gate_battery = BatteryLevel(f"{self.name} Battery", self.gate_dev, client)
+        self.gate_rssi = RSSI(f"{self.name} RSSI", self.gate_dev, client)
+        self.gate_tx_rtt = Sensor(f"{self.name} tx rtt", self.gate_dev, client, "ms")
+
+    def update(self):
+        if not self.radio.tx(2, "S"):
+            return
+
+        packet = self.radio.rx(sender=2, timeout=0.75)
+        if packet is not None:
+            display.fill(0)
+            msg = self.radio.decode_msg(packet)
+            logger.info(packet)
+            self.gate_rssi.publish_state(self.radio.rfm9x.last_rssi)
+            self.gate_tx_rtt.publish_state(self.radio.tx_stats['rtt'])
+
+        self.gate.publish_state()
+        self.gate_battery.publish_state(99)
+
 
 
 def run(client, radio):
     client.loop_start()
     start_time = datetime.datetime.now()
 
-    driveway_gate_dev = DeviceConfig("Gate Manager")
-    driveway_gate = Gate("Driveway Gate", driveway_gate_dev, client)
-    driveway_gate_battery = BatteryLevel("Driveway Gate Battery", driveway_gate_dev, client)
-    driveway_gate_rssi = RSSI("Driveway Gate RSSI", driveway_gate_dev, client)
-    driveway_gate_tx_rtt = Sensor("Driveway Gate tx rtt", driveway_gate_dev, client, "ms")
-
     loranet_dev = DeviceConfig("loranet-bridge")
     loranet_uptime = Sensor("LoRaNet uptime", loranet_dev, client, "s")
 
+    driveway_gate = DrivewayGate("Driveway Gate", radio, client)
+
     # see readme for a dictionary of messages
     while True:
-        if not radio.tx(2, "S"):
-            continue
-
-        packet = radio.rx(sender=2, timeout=0.75)
-        if packet is not None:
-            display.fill(0)
-            display.text(f"RSSI: {radio.rfm9x.last_rssi} dB", 0, 10, 1)
-            display.text(f"SNR: {radio.rfm9x.last_snr} dB", 0, 20, 1)
-            node = radio.decode_msg(packet)
-            display.show()
-            logger.info(packet)
-            driveway_gate_rssi.publish_state(radio.rfm9x.last_rssi)
-            driveway_gate_tx_rtt.publish_state(radio.tx_stats['rtt'])
-
-            pwr = int(node['txpwr'])
-            if pwr != radio.tx_power:
-                radio.tx(2, f"P:{radio.tx_power}")
-
-        driveway_gate.publish_state()
-        driveway_gate_battery.publish_state(99)
-
+        driveway_gate.update()
         loranet_uptime.state = (datetime.datetime.now() - start_time).seconds
         loranet_uptime.publish_state()
-
         time.sleep(5)
 
 
 def main():
     # Eventually may put argparse/config file processing here.
-    logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(asctime)s %(threadName)s: %(message)s", 
+        level=logging.DEBUG)
 
     radio = LoRaBase()
 
@@ -276,6 +286,8 @@ def main():
 
     client = mqtt.Client()
     client.on_disconnect = on_disconnect
+    client.on_connect = on_connect
+    client.enable_logger(logger)
 
     if len(mqtt_username) and len(mqtt_password):
         client.username_pw_set(mqtt_username, mqtt_password)
