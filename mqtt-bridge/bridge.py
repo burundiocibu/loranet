@@ -191,34 +191,9 @@ class Gate(BaseEntity):
         self.state = 'closed' # or  open, opening, closed, closing, stopped
         self.position = 0
 
-        self.mqtt_client.message_callback_add(self.config.command_topic, self.command)
-        self.mqtt_client.subscribe(self.config.command_topic)
-        self.mqtt_client.message_callback_add(self.config.set_position_topic, self.command)
-        self.mqtt_client.subscribe(self.config.set_position_topic)
-
     def publish_state(self):
         self.mqtt_client.publish(self.config.state_topic, self.state)
         self.mqtt_client.publish(self.config.position_topic, self.position)
-
-    # Callback for when we receive a message
-    def command(self, client, obj, message):
-        if message.topic == self.config.command_topic:
-            if message.payload == b'OPEN':
-                logger.debug("Opening")
-                self.position = 100
-            elif message.payload == b'CLOSE':
-                logger.debug("Closing")
-                self.position = 0
-            elif message.payload == b'STOP':
-                print("Nope")
-        if message.topic == self.config.set_position_topic:
-            self.position = int(message.payload)
-            logger.debug(f"position = {int(message.payload)}")
-        if self.position > 0:
-            self.state = "open"
-        else:
-            self.state = "closed"
-        self.publish_state()
 
 
 class LoRaNode():
@@ -227,34 +202,71 @@ class LoRaNode():
         self.name = name
         self.radio = radio
         self.client = client
+        self.device_config = DeviceConfig(f"{self.name} Manager")
     
     def update(self):
         pass
 
+
 class DrivewayGate(LoRaNode):
     def __init__(self, name, radio, client):
         super().__init__(name, 2, radio, client)
-        self.gate_dev = DeviceConfig(f"{self.name} Manager")
-        self.gate = Gate(self.name, self.gate_dev, client)
-        self.gate_battery = BatteryLevel(f"{self.name} Battery", self.gate_dev, client)
-        self.gate_rssi = RSSI(f"{self.name} RSSI", self.gate_dev, client)
-        self.gate_tx_rtt = Sensor(f"{self.name} tx rtt", self.gate_dev, client, "ms")
+        self.gate = Gate(self.name, self.device_config, client)
+        self.battery = BatteryLevel(f"{self.name} Battery", self.device_config, client)
+        self.rssi = RSSI(f"{self.name} RSSI", self.device_config, client)
+        self.tx_rtt = Sensor(f"{self.name} tx rtt", self.device_config, client, "ms")
+        # messages this device handle
+        self.client.message_callback_add(self.gate.config.command_topic, self.command)
+        self.client.subscribe(self.gate.config.command_topic)
+        self.client.message_callback_add(self.gate.config.set_position_topic, self.command)
+        self.client.subscribe(self.gate.config.set_position_topic)
 
-    def update(self):
-        if not self.radio.tx(2, "S"):
-            return
-
-        packet = self.radio.rx(sender=2, timeout=0.75)
-        if packet is not None:
-            display.fill(0)
-            msg = self.radio.decode_msg(packet)
-            logger.info(packet)
-            self.gate_rssi.publish_state(self.radio.rfm9x.last_rssi)
-            self.gate_tx_rtt.publish_state(self.radio.tx_stats['rtt'])
-
+    def publish_state(self):
+        self.rssi.publish_state()
+        self.tx_rtt.publish_state()
         self.gate.publish_state()
-        self.gate_battery.publish_state(99)
+        self.battery.publish_state(99)
 
+    def update_state(self):
+        if not self.radio.tx(self.id, "S"):
+            return
+        self.receive_status()
+
+    def receive_status(self):
+        packet = self.radio.rx(sender=self.id, timeout=0.75)
+        if packet is not None:
+            msg = self.radio.decode_msg(packet)
+            logger.info(f"msg:{msg}")
+            self.rssi.publish_state(self.radio.rfm9x.last_rssi)
+            self.tx_rtt.publish_state(self.radio.tx_stats['rtt'])
+            self.battery.publish_state(int(100 * float(msg["fvb"]) / 4.2))
+            self.gate.position = int(msg["gpos"])
+            if self.gate.position > 0:
+                self.gate.state = "open"
+            else:
+                self.gate.state = "closed"
+            self.gate.publish_state()
+
+    # Callback for when we receive a message
+    def command(self, client, obj, message):
+        if message.topic == self.gate.config.command_topic:
+            if message.payload == b'OPEN':
+                logger.debug("Opening")
+                self.radio.tx(2, "O")
+            elif message.payload == b'CLOSE':
+                logger.debug("Closing")
+                self.radio.tx(2, "C")
+            elif message.payload == b'STOP':
+                print("Nope")
+        if message.topic == self.gate.config.set_position_topic:
+            self.gate.position = int(message.payload)
+            logger.debug(f"position = {self.gate.position}")
+            self.radio.tx(2, f"S{self.gate.position}")
+        if self.gate.position > 0:
+            self.gate.state = "open"
+        else:
+            self.gate.state = "closed"
+        self.receive_status()
 
 
 def run(client, radio):
@@ -268,10 +280,10 @@ def run(client, radio):
 
     # see readme for a dictionary of messages
     while True:
-        driveway_gate.update()
         loranet_uptime.state = (datetime.datetime.now() - start_time).seconds
         loranet_uptime.publish_state()
-        time.sleep(5)
+        driveway_gate.update_state()
+        time.sleep(15)
 
 
 def main():
@@ -287,7 +299,7 @@ def main():
     client = mqtt.Client()
     client.on_disconnect = on_disconnect
     client.on_connect = on_connect
-    client.enable_logger(logger)
+    #client.enable_logger(logger)
 
     if len(mqtt_username) and len(mqtt_password):
         client.username_pw_set(mqtt_username, mqtt_password)

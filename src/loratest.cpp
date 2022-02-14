@@ -33,6 +33,8 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 // 5 to 23 dB on this device
 int txpwr = 13;
 
+int gpos = 0;
+
 void setup() 
 {
     pinMode(RFM95_RST, OUTPUT);
@@ -89,7 +91,8 @@ void send_status(uint8_t from)
     uint8_t gate_closed = digitalRead(GATE_CLOSED);
 
     String msg;
-    msg += String("gpos:") + String(gate_pos);
+//    msg += String("gpos:") + String(gate_pos);
+    msg += String("gpos:") + String(gpos);
     msg += String(",gvb:") + String(gate_vbat);
     msg += String(",gc:") + String(gate_closed);
     msg += String(",fvb:") + String(feather_vbat);
@@ -111,6 +114,7 @@ void open_gate()
     digitalWrite(GATE_SAFE, 1);
     delay(10);
     digitalWrite(GATE_OPEN, 0);
+    gpos = 100;
 }
 
 
@@ -119,6 +123,7 @@ void close_gate()
     digitalWrite(GATE_OPEN, 0);
     delay(10);
     digitalWrite(GATE_SAFE, 0);
+    gpos = 0;
 }
 
 

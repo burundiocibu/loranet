@@ -47,3 +47,14 @@ fvb:  feather battery voltage, float, 0..5
 rssi: receive signal strength indicator, int, -128..0
 snr:  receive signal to noise ratio, float, ??
 txpwr: transmit power, int, 3..23
+
+### bridge.py
+
+classes:
+    LoRaBase : Interface to the base station LoRa radio; no threads tx/rx calls can take hundreads of ms
+    DeviceConfig: data to describe a home assistant/mqtt device
+    EntityConfig: data to describe a home assistant/mqtt entity (a device can have multiple entities)
+    EntityBase: base class for the functionality of a single entity
+    LoRaNode: 
+
+define callbacks for objects that need
