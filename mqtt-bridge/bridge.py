@@ -44,7 +44,7 @@ class LoRaBase():
         RESET = DigitalInOut(board.D25)
         self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
         self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
-        self.tx_power = 13
+        self.tx_power = 5
         self.rfm9x.tx_power = self.tx_power
         self.rfm9x.node = 1
         self.rfm9x.flags = 0 # default is 0
@@ -261,7 +261,7 @@ class DrivewayGate(LoRaNode):
         if message.topic == self.gate.config.set_position_topic:
             self.gate.position = int(message.payload)
             logger.debug(f"position = {self.gate.position}")
-            self.radio.tx(2, f"S{self.gate.position}")
+            self.radio.tx(2, f"K{self.gate.position}")
         if self.gate.position > 0:
             self.gate.state = "open"
         else:

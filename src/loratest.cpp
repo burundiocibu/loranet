@@ -31,7 +31,7 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 #define GATE_CLOSED 11  // magnetic 
 
 // 5 to 23 dB on this device
-int txpwr = 13;
+int txpwr = 5;
 
 int gpos = 0;
 
@@ -47,7 +47,7 @@ void setup()
     Serial.begin(115200);
     //while (!Serial)
     //    delay(1);
-    Serial.println("Feather LoRa TX Test!");
+    Serial.println("LoRa Client!");
 
     if (!manager.init())
         Serial.println("manager init failed");
@@ -100,6 +100,7 @@ void send_status(uint8_t from)
     msg += String(",rssi:") + String(rf95.lastRssi());
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
+    msg += String(",ut:") + String (millis()/1000);
     Serial.println(msg);
 
     if (!manager.sendtoWait((uint8_t*)msg.c_str(), msg.length(), from))
@@ -151,6 +152,13 @@ void loop()
 
                 case 'S':
                     delay(10); // give the receiver a chance to start listening
+                    break;
+
+                case 'K':
+                    if (atoi((char*)&rf95_buf[2]) > 0)
+                        open_gate();
+                    else
+                        close_gate();
                     break;
 
                 case 'P':

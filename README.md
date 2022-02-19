@@ -36,7 +36,7 @@ Just do my own mqtt 'client'
 S   Status request
 S,p=v,[p=v,...] Status response
 C: close gate
-O: Open gate
+O: open gate
 Pnnn: set power to nnn
 
 Parameters (p in status response):
