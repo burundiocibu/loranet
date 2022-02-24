@@ -220,7 +220,7 @@ class LoRaNetBridge(LoRaNode):
     def __init__(self, radio, client):
         super().__init__("LoRaNet Bridge", 0, radio, client)
         self.device_config = DeviceConfig(f"{self.name}")
-        self.uptime = Sensor(f"{self.name} uptime", self.device_config, client)
+        self.uptime = Sensor(f"{self.name} uptime", self.device_config, client, "s")
         self.start_time = datetime.datetime.now()
 
     def update_state(self):
