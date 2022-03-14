@@ -7,6 +7,8 @@
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 
+#include <ModbusMaster.h>
+
 // for feather32u4 
 #define RFM95_CS 8
 #define RFM95_RST 4
@@ -25,15 +27,20 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 
 #define GATE_SAFE 3 // GPIO output to relay
 #define GATE_OPEN 2 // GPIO output to relay
+#define POE_ENABLE 1 // GPIO output to relay
+
+#define GATE_CLOSED 11  // magnetic 
 
 #define GATE_VBAT 12 // A11 (w dividerr)
-#define GATE_POS 10  // A10 (may not work)
-#define GATE_CLOSED 11  // magnetic 
+
+#define ROVER_RX 0
+#define ROVER_TX 1 
 
 // 5 to 23 dB on this device
 int txpwr = 5;
 
 int gpos = 0;
+int poe_status = 0;
 
 void setup() 
 {
@@ -42,8 +49,13 @@ void setup()
 
     pinMode(GATE_OPEN, OUTPUT); 
     pinMode(GATE_SAFE, OUTPUT);
+    pinMode(POE_ENABLE, 0);
     pinMode(GATE_CLOSED, INPUT);
 
+    // Rover solar battery manager
+    Serial1.begin(9600);
+
+    // Console
     Serial.begin(115200);
     //while (!Serial)
     //    delay(1);
@@ -87,7 +99,6 @@ void send_status(uint8_t from)
     // This is the 
     float feather_vbat = analogRead(FEATHER_VBAT) * 2 * 3.3 / 1024;
     float gate_vbat = analogRead(GATE_VBAT) * 3.3/1024;
-    float gate_pos = analogRead(GATE_POS) * 3.3/1024;
     uint8_t gate_closed = digitalRead(GATE_CLOSED);
 
     String msg;
@@ -152,6 +163,13 @@ void loop()
 
                 case 'S':
                     delay(10); // give the receiver a chance to start listening
+                    break;
+
+                case 'V':
+                    if (rf95_buf[2] == '0')
+                        digitalWrite(POE_ENABLE, 0);
+                    else
+                        digitalWrite(POE_ENABLE, 1);
                     break;
 
                 case 'K':

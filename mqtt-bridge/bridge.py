@@ -253,7 +253,7 @@ class DrivewayGate(LoRaNode):
             logger.info(f"msg:{msg}")
             self.rssi.publish_state(self.radio.rfm9x.last_rssi)
             self.tx_rtt.publish_state(self.radio.tx_stats['rtt'])
-            self.battery.publish_state(int(100 * float(msg["fvb"]) / 4.2))
+            self.battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / 0.8))
             self.uptime.publish_state(int(msg["ut"]))
             self.gate.position = int(msg["gpos"])
             if self.gate.position > 0:
