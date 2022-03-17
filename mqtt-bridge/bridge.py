@@ -245,6 +245,10 @@ class DrivewayGate(LoRaNode):
         if not self.radio.tx(self.id, "S"):
             return
         self.receive_status()
+        if not self.radio.tx(self.id, "R"):
+            return
+        self.receive_rover_status()
+        
 
     def receive_status(self):
         packet = self.radio.rx(sender=self.id, timeout=0.75)
@@ -261,6 +265,12 @@ class DrivewayGate(LoRaNode):
             else:
                 self.gate.state = "closed"
             self.gate.publish_state()
+
+    def receive_rover_status(self):
+        packet = self.radio.rx(sender=self.id, timeout=0.75)
+        if packet is not None:
+            msg = self.radio.decode_msg(packet)
+            logger.info(f"msg:{msg}")
 
     # Callback for when we receive a message
     def command(self, client, obj, message):
@@ -317,7 +327,7 @@ def main():
         logger.error("No username/password specified")
         return
 
-    client.connect("duckling.grootland")
+    client.connect("duckling.groot")
 
     run(client, radio)
 

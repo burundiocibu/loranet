@@ -1,4 +1,5 @@
 // -*- coding: utf-8 -*-
+#include "renogyrover.hpp"
 
 #include <SPI.h>
 
@@ -7,7 +8,6 @@
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 
-#include <ModbusMaster.h>
 
 // for feather32u4 
 #define RFM95_CS 8
@@ -33,14 +33,13 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 
 #define GATE_VBAT 12 // A11 (w dividerr)
 
-#define ROVER_RX 0
-#define ROVER_TX 1 
-
 // 5 to 23 dB on this device
 int txpwr = 5;
 
 int gpos = 0;
 int poe_status = 0;
+
+RenogyRover rover(Serial1);
 
 void setup() 
 {
@@ -52,13 +51,13 @@ void setup()
     pinMode(POE_ENABLE, 0);
     pinMode(GATE_CLOSED, INPUT);
 
-    // Rover solar battery manager
+    // modbus
     Serial1.begin(9600);
 
     // Console
     Serial.begin(115200);
-    //while (!Serial)
-    //    delay(1);
+    while (!Serial)
+        delay(1);
     Serial.println("LoRa Client!");
 
     if (!manager.init())
@@ -93,16 +92,14 @@ void setup()
     rf95.setTxPower(txpwr, false);
 }
 
+
 void send_status(uint8_t from)
 {
-    rf95.setTxPower(txpwr);
-    // This is the 
     float feather_vbat = analogRead(FEATHER_VBAT) * 2 * 3.3 / 1024;
     float gate_vbat = analogRead(GATE_VBAT) * 3.3/1024;
     uint8_t gate_closed = digitalRead(GATE_CLOSED);
 
     String msg;
-//    msg += String("gpos:") + String(gate_pos);
     msg += String("gpos:") + String(gpos);
     msg += String(",gvb:") + String(gate_vbat);
     msg += String(",gc:") + String(gate_closed);
@@ -112,8 +109,21 @@ void send_status(uint8_t from)
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
     msg += String(",ut:") + String (millis()/1000);
+
     Serial.println(msg);
 
+    rf95.setTxPower(txpwr);
+    if (!manager.sendtoWait((uint8_t*)msg.c_str(), msg.length(), from))
+        Serial.println("sendtoWait failed");
+}
+
+
+void send_rover_status(uint8_t from)
+{
+    String msg = rover.status_msg();
+    Serial.println(msg);
+
+    rf95.setTxPower(txpwr);
     if (!manager.sendtoWait((uint8_t*)msg.c_str(), msg.length(), from))
         Serial.println("sendtoWait failed");
 }
@@ -141,6 +151,7 @@ void close_gate()
 
 void loop()
 {
+
     if (manager.available())
     {
         uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -155,14 +166,23 @@ void loop()
             {
                 case 'O':
                     open_gate();
+                    send_status(from);
                     break;
 
                 case 'C':
                     close_gate();
+                    send_status(from);
                     break;
 
                 case 'S':
+                    // Return status of gate manager
                     delay(10); // give the receiver a chance to start listening
+                    send_status(from);
+                    break;
+
+                case 'R':
+                    // return status of charge controller
+                    send_rover_status(from);
                     break;
 
                 case 'V':
@@ -177,6 +197,7 @@ void loop()
                         open_gate();
                     else
                         close_gate();
+                    send_status(from);
                     break;
 
                 case 'P':
@@ -184,10 +205,9 @@ void loop()
                     if (pwr >= 3 && pwr <= 23)
                         txpwr = pwr;
                     delay(10); // give the receiver a chance to start listening
+                    send_status(from);
                     break;
             }
-
-            send_status(from);
         }
         else
             Serial.println("recvfromAck error");
