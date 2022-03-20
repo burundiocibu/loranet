@@ -25,19 +25,19 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 
 #define FEATHER_VBAT 9  // connected to feather Vbatt through a 1/2 divider network
 
-#define GATE_SAFE 3 // GPIO output to relay
-#define GATE_OPEN 2 // GPIO output to relay
-#define POE_ENABLE 1 // GPIO output to relay
+#define GATE_SAFE 21 // GPIO output to relay
+#define GATE_OPEN 22 // GPIO output to relay
+#define POE_ENABLE 23 // GPIO output to relay
+#define GATE_ENABLE 20  // gate controler on/off
+#define GATE_CLOSED 19 // tbd
 
-#define GATE_CLOSED 11  // magnetic 
-
-#define GATE_VBAT 12 // A11 (w dividerr)
+#define GATE_VBAT A11 // (w divider)
 
 // 5 to 23 dB on this device
 int txpwr = 5;
 
 int gpos = 0;
-int poe_status = 0;
+int poe_status = 1;
 
 RenogyRover rover(Serial1);
 
@@ -48,8 +48,11 @@ void setup()
 
     pinMode(GATE_OPEN, OUTPUT); 
     pinMode(GATE_SAFE, OUTPUT);
-    pinMode(POE_ENABLE, 0);
+    pinMode(POE_ENABLE, OUTPUT);
+    pinMode(POE_ENABLE, OUTPUT);
     pinMode(GATE_CLOSED, INPUT);
+
+    digitalWrite(POE_ENABLE, poe_status);
 
     // modbus
     Serial1.begin(9600);
@@ -96,7 +99,7 @@ void setup()
 void send_status(uint8_t from)
 {
     float feather_vbat = analogRead(FEATHER_VBAT) * 2 * 3.3 / 1024;
-    float gate_vbat = analogRead(GATE_VBAT) * 3.3/1024;
+    float gate_vbat = analogRead(GATE_VBAT) * 4.29 * 3.3/1024;
     uint8_t gate_closed = digitalRead(GATE_CLOSED);
 
     String msg;
@@ -183,6 +186,13 @@ void loop()
                 case 'R':
                     // return status of charge controller
                     send_rover_status(from);
+                    break;
+
+                case 'L':
+                    if (rf95_buf[2] == '0')
+                        rover.load_on(0);
+                    else
+                        rover.load_on(1);
                     break;
 
                 case 'V':
