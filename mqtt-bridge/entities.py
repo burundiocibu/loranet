@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# These are really templates for entites and sets up auto discovery.
 
 import json
 import logging
@@ -52,7 +53,8 @@ class BaseEntity:
             self.state = state
         self.mqtt_client.publish(self.config.state_topic, self.state)
 
-
+#==================
+# Read only entites
 class BatteryLevel(BaseEntity):
     def __init__(self, name, device, mqtt_client):
         super().__init__(name, "battery", "sensor", device, mqtt_client)
@@ -103,3 +105,28 @@ class Sensor(BaseEntity):
         if units is not None:
             self.config.unit_of_measurement = units
         self.publish_discovery()
+
+
+#=====================================
+# Below are the non read-only entities
+class Gate(BaseEntity):
+    def __init__(self, name, device, mqtt_client):
+        super().__init__(name, "gate", "cover", device, mqtt_client)
+        self.config.position_topic = f"{self.topic}/position"
+        self.config.set_position_topic = f"{self.topic}/position/command"
+        self.config.command_topic = f"{self.topic}/command"
+        self.publish_discovery()
+        self.state = 'closed' # or  open, opening, closed, closing, stopped
+        self.position = 0
+
+    def publish_state(self):
+        self.mqtt_client.publish(self.config.state_topic, self.state)
+        self.mqtt_client.publish(self.config.position_topic, self.position)
+
+
+class Switch(BaseEntity):
+    def __init__(self, name, device, mqtt_client):
+        super().__init__(name, "switch", "switch", device, mqtt_client)
+        self.config.command_topic = f"{self.topic}/command"
+        self.publish_discovery()
+        self.state = "off"
