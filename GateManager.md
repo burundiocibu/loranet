@@ -24,7 +24,7 @@ J2-2 (PCB7), feather pin 21, relay 1, (gate safe)
 J2-3 (PCB8), feather pin 22, relay 2, (gate open)
 J2-4 (PCB9), feather pin 23, relay 3, (poe power enable)
 J2-5 (PCB10), ground
-J2-6  (PCB11), feather 20, relay 4, (gate enable)
+J2-6  (PCB11), feather 20, relay 4, (gate power)
 J2-7  (PCB12), feather 19, tbd
 J2-8  (PCB13), feather 18 , tbd
 

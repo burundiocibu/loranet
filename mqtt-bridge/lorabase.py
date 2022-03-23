@@ -45,7 +45,8 @@ class LoRaBase():
         self.msg = None # most recent received message
 
     def print_stats(self, msg:str) -> None:
-        logger.debug(f"{msg}  tx:{self.tx_stats}  rx:{self.rx_stats}  msg:{self.msg}")
+        logger.debug(f"{msg}  tx:{self.tx_stats}  rx:{self.rx_stats}")
+        logger.debug(f"...  msg:{self.msg}")
 
     def tx(self, dest, msg:str) -> bool:
         t0 = time.perf_counter()

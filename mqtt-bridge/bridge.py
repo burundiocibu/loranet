@@ -10,7 +10,7 @@ import paho.mqtt.client as mqtt
 import time
 
 from lorabase import LoRaBase
-from entities import *
+import entities
 
 logger = logging.getLogger(__name__)
 
@@ -23,29 +23,13 @@ def on_connect(mqttc, obj, flags, rc):
     logger.info("mqtt connect rc: " + str(rc))
 
 
-
-class Gate(BaseEntity):
-    def __init__(self, name, device, mqtt_client):
-        super().__init__(name, "gate", "cover", device, mqtt_client)
-        self.config.position_topic = f"{self.topic}/position"
-        self.config.set_position_topic = f"{self.topic}/position/command"
-        self.config.command_topic = f"{self.topic}/command"
-        self.publish_discovery()
-        self.state = 'closed' # or  open, opening, closed, closing, stopped
-        self.position = 0
-
-    def publish_state(self):
-        self.mqtt_client.publish(self.config.state_topic, self.state)
-        self.mqtt_client.publish(self.config.position_topic, self.position)
-
-
 class LoRaNode():
-    def __init__(self, name:str, id:int, radio, client):
+    def __init__(self, name:str, id:int, radio, mqtt_client):
         self.id = id
         self.name = name
         self.radio = radio
-        self.client = client
-        self.device_config = DeviceConfig(f"{self.name} Manager")
+        self.mqtt_client = mqtt_client
+        self.device_config = entities.DeviceConfig(f"{self.name} Manager")
 
     def update_state(self):
         """update and publish the state of all entities"""
@@ -53,10 +37,10 @@ class LoRaNode():
 
 
 class LoRaNetBridge(LoRaNode):
-    def __init__(self, radio, client):
-        super().__init__("LoRaNet Bridge", 0, radio, client)
-        self.device_config = DeviceConfig(f"{self.name}")
-        self.uptime = Sensor(f"{self.name} uptime", self.device_config, client, "s")
+    def __init__(self, id, radio, mqtt_client):
+        super().__init__("LoRaNet Bridge", id, radio, mqtt_client)
+        self.device_config = entities.DeviceConfig(f"{self.name}")
+        self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
         self.start_time = datetime.datetime.now()
 
     def update_state(self):
@@ -64,77 +48,117 @@ class LoRaNetBridge(LoRaNode):
 
 
 class DrivewayGate(LoRaNode):
-    def __init__(self, name, radio, client):
-        super().__init__(name, 2, radio, client)
-        self.gate = Gate(self.name, self.device_config, client)
-        self.battery = BatteryLevel(f"{self.name} Battery", self.device_config, client)
-        self.rssi = RSSI(f"{self.name} RSSI", self.device_config, client)
-        self.tx_rtt = Sensor(f"{self.name} tx rtt", self.device_config, client, "ms")
-        self.uptime = Sensor(f"{self.name} uptime", self.device_config, client, "s")
-        # messages this device handle
-        self.client.message_callback_add(self.gate.config.command_topic, self.command)
-        self.client.subscribe(self.gate.config.command_topic)
-        self.client.message_callback_add(self.gate.config.set_position_topic, self.command)
-        self.client.subscribe(self.gate.config.set_position_topic)
+    def __init__(self, name, id, radio, mqtt_client):
+        super().__init__(name, id, radio, mqtt_client)
+        self.gate = entities.Gate(self.name, self.device_config, mqtt_client )
+        self.mqtt_client.message_callback_add(self.gate.config.command_topic, self.gate_mqrx)
+        self.mqtt_client.subscribe(self.gate.config.command_topic)
+        self.mqtt_client.message_callback_add(self.gate.config.set_position_topic, self.gate_mqrx)
+        self.mqtt_client.subscribe(self.gate.config.set_position_topic)
+
+        self.poe_enable = entities.Switch(f"{self.name} PoE Enable", self.device_config, self.mqtt_client)
+        self.mqtt_client.message_callback_add(self.poe_enable.config.command_topic, self.poe_mqrx)
+        self.mqtt_client.subscribe(self.poe_enable.config.command_topic)
+
+        self.rover_load_enable = entities.Switch(f"{self.name} Rover Load Enable", self.device_config, self.mqtt_client)
+        self.mqtt_client.message_callback_add(self.rover_load_enable.config.command_topic, self.rover_mqrx)
+        self.mqtt_client.subscribe(self.rover_load_enable.config.command_topic)
+
+        self.feather_battery = entities.BatteryLevel(f"{self.name} LoRa Battery", self.device_config, mqtt_client)
+        self.gate_battery = entities.BatteryLevel(f"{self.name} Battery", self.device_config, mqtt_client)
+        self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
+        self.tx_rtt = entities.Sensor(f"{self.name} tx rtt", self.device_config, mqtt_client, "ms")
+        self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
+        self.rover_battery_voltage = entities.Voltage(f"{self.name} Rover Battery Voltage", self.device_config, mqtt_client)
+        self.rover_battery = entities.BatteryLevel(f"{self.name} Rover Battery", self.device_config, mqtt_client)
+        self.rover_load_power = entities.Power(f"{self.name} Rover Load Power", self.device_config, mqtt_client)
+        self.rover_solar_power = entities.Power(f"{self.name} Rover Solar Power", self.device_config, mqtt_client)
+        self.rover_charge_state = entities.Sensor(f"{self.name} Rover Charge State", self.device_config, mqtt_client)
 
     def update_state(self):
+        logger.info("Requesting state")
         if not self.radio.tx(self.id, "S"):
             return
         self.receive_status()
-        if not self.radio.tx(self.id, "R"):
-            return
-        self.receive_rover_status()
-        
 
     def receive_status(self):
         packet = self.radio.rx(sender=self.id, timeout=0.75)
         if packet is not None:
             msg = self.radio.decode_msg(packet)
-            logger.info(f"msg:{msg}")
             self.rssi.publish_state(self.radio.rfm9x.last_rssi)
             self.tx_rtt.publish_state(self.radio.tx_stats['rtt'])
-            self.battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / 0.8))
+            self.feather_battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / (4.3 - 3.4)))
+            self.gate_battery.publish_state(int(100 * (float(msg["gvb"]) - 10.5) / (12.8 - 10.5)))
             self.uptime.publish_state(int(msg["ut"]))
-            self.gate.position = int(msg["gpos"])
+            self.rover_battery_voltage.publish_state(float(msg["bv"]));
+            self.rover_battery.publish_state(float(msg["bp"]))
+            self.rover_load_power.publish_state(round(float(msg["lv"]) * float(msg["lc"]),2))
+            self.rover_solar_power.publish_state(round(float(msg["sv"]) * float(msg["sc"]),2))
+            self.rover_charge_state.publish_state(int(msg["cs"]))
+            if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
+            else:                     self.poe_enable.state = "ON"
+            self.poe_enable.publish_state()
+            if int(msg["lo"]) == 0:  self.rover_load_enable.state = "OFF"
+            else:                    self.rover_load_enable.state = "ON"
+            self.poe_enable.publish_state()
+
+            self.gate.position = int(msg["gp"])
             if self.gate.position > 0:
                 self.gate.state = "open"
             else:
                 self.gate.state = "closed"
             self.gate.publish_state()
 
-    def receive_rover_status(self):
-        packet = self.radio.rx(sender=self.id, timeout=0.75)
-        if packet is not None:
-            msg = self.radio.decode_msg(packet)
-            logger.info(f"msg:{msg}")
-
-    # Callback for when we receive a message
-    def command(self, client, obj, message):
+    def gate_mqrx(self, mqtt_client, obj, message):
         if message.topic == self.gate.config.command_topic:
             if message.payload == b'OPEN':
                 logger.debug("Opening")
-                self.radio.tx(2, "O")
+                self.radio.tx(self.id, "GO")
             elif message.payload == b'CLOSE':
                 logger.debug("Closing")
-                self.radio.tx(2, "C")
+                self.radio.tx(self.id, "GC")
             elif message.payload == b'STOP':
                 logger.debug("Nope")
         if message.topic == self.gate.config.set_position_topic:
             self.gate.position = int(message.payload)
             logger.debug(f"position = {self.gate.position}")
-            self.radio.tx(2, f"K{self.gate.position}")
+            self.radio.tx(self.id, f"K{self.gate.position}")
         if self.gate.position > 0:
             self.gate.state = "open"
         else:
             self.gate.state = "closed"
-        self.receive_status()
+        self.update_state()
+
+    def poe_mqrx(self, mqtt_client, obj, message):
+        if message.payload == b"ON":
+            logger.debug("poe on")
+            self.radio.tx(self.id, "E1")
+        elif message.payload == b"OFF":
+            logger.debug("poe off")
+            self.radio.tx(self.id, "E0")
+        else:
+            logger.warning(f"Received unexpected mqtt message: {message.payload}")
+            return
+        self.update_state()
+
+    def rover_mqrx(self, mqtt_client, obj, message):
+        if message.payload == b"ON":
+            logger.debug("rover load on")
+            self.radio.tx(self.id, "R1")
+        elif message.payload == b"OFF":
+            logger.debug("rover load off")
+            self.radio.tx(self.id, "R0")
+        else:
+            logger.warning(f"Received unexpected mqtt message: {message.payload}")
+            return
+        self.update_state()
 
 
-def run(client, radio):
-    client.loop_start()
+def run(mqtt_client, radio):
+    mqtt_client.loop_start()
 
-    loranet_bridge = LoRaNetBridge(radio, client)
-    driveway_gate = DrivewayGate("Driveway Gate", radio, client)
+    loranet_bridge = LoRaNetBridge(0, radio, mqtt_client)
+    driveway_gate = DrivewayGate("Driveway Gate", 2, radio, mqtt_client)
 
     # see readme for a dictionary of messages
     while True:
@@ -145,26 +169,26 @@ def run(client, radio):
 
 def main():
     # Eventually may put argparse/config file processing here.
-    logging.basicConfig(format="%(asctime)s %(threadName)s: %(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(asctime)s %(threadName)s: %(message)s", level=logging.DEBUG)
 
     radio = LoRaBase()
 
     mqtt_username = os.environ.get("mqtt_username", "")
     mqtt_password = os.environ.get("mqtt_password", "")
 
-    client = mqtt.Client()
-    client.on_disconnect = on_disconnect
-    client.on_connect = on_connect
+    mqtt_client = mqtt.Client()
+    mqtt_client.on_disconnect = on_disconnect
+    mqtt_client.on_connect = on_connect
 
     if len(mqtt_username) and len(mqtt_password):
-        client.username_pw_set(mqtt_username, mqtt_password)
+        mqtt_client.username_pw_set(mqtt_username, mqtt_password)
     else:
         logger.error("No username/password specified")
         return
 
-    client.connect("duckling.groot")
+    mqtt_client.connect("duckling.groot")
 
-    run(client, radio)
+    run(mqtt_client, radio)
 
 
 if __name__ == "__main__":

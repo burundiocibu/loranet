@@ -14,7 +14,6 @@ class RenogyRover
 {
     public:
         RenogyRover(Stream &serial);
-        String status_msg();
         
         float battery_percentage() {return read_register(256); };
         float battery_voltage()    {return 0.1  * read_register(257); };  // Volts
