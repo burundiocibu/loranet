@@ -81,33 +81,43 @@ class DrivewayGate(LoRaNode):
             return
         self.receive_status()
 
-    def receive_status(self):
-        packet = self.radio.rx(sender=self.id, timeout=0.75)
-        if packet is not None:
-            msg = self.radio.decode_msg(packet)
-            self.rssi.publish_state(self.radio.rfm9x.last_rssi)
+    def receive_status(self, packet):
+        msg = self.radio.decode_msg(packet)
+        self.rssi.publish_state(self.radio.rfm9x.last_rssi)
+        if 'rtt' in self.radio.tx_stats:
             self.tx_rtt.publish_state(self.radio.tx_stats['rtt'])
+        if 'fvb' in msg:
             self.feather_battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / (4.3 - 3.4)))
+        if 'gvb' in msg:
             self.gate_battery.publish_state(int(100 * (float(msg["gvb"]) - 10.5) / (12.8 - 10.5)))
+        if 'ut' in msg:
             self.uptime.publish_state(int(msg["ut"]))
+        if 'bv' in msg:
             self.rover_battery_voltage.publish_state(float(msg["bv"]));
+        if 'bp' in msg:
             self.rover_battery.publish_state(float(msg["bp"]))
+        if 'lv' in msg:
             self.rover_load_power.publish_state(round(float(msg["lv"]) * float(msg["lc"]),2))
+        if 'lv' in msg:
             self.rover_solar_power.publish_state(round(float(msg["sv"]) * float(msg["sc"]),2))
+        if 'cs' in msg:
             self.rover_charge_state.publish_state(int(msg["cs"]))
+        if 'poe' in msg:
             if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
             else:                     self.poe_enable.state = "ON"
             self.poe_enable.publish_state()
+        if 'lo' in msg:
             if int(msg["lo"]) == 0:  self.rover_load_enable.state = "OFF"
             else:                    self.rover_load_enable.state = "ON"
-            self.poe_enable.publish_state()
-
+            self.rover_load_enable.publish_state()
+        if 'gp' in msg:
             self.gate.position = int(msg["gp"])
             if self.gate.position > 0:
                 self.gate.state = "open"
             else:
                 self.gate.state = "closed"
             self.gate.publish_state()
+        logger.debug(f"{self.name} state updated")
 
     def gate_mqrx(self, mqtt_client, obj, message):
         if message.topic == self.gate.config.command_topic:
@@ -123,11 +133,6 @@ class DrivewayGate(LoRaNode):
             self.gate.position = int(message.payload)
             logger.debug(f"position = {self.gate.position}")
             self.radio.tx(self.id, f"K{self.gate.position}")
-        if self.gate.position > 0:
-            self.gate.state = "open"
-        else:
-            self.gate.state = "closed"
-        self.update_state()
 
     def poe_mqrx(self, mqtt_client, obj, message):
         if message.payload == b"ON":
@@ -139,7 +144,6 @@ class DrivewayGate(LoRaNode):
         else:
             logger.warning(f"Received unexpected mqtt message: {message.payload}")
             return
-        self.update_state()
 
     def rover_mqrx(self, mqtt_client, obj, message):
         if message.payload == b"ON":
@@ -150,8 +154,6 @@ class DrivewayGate(LoRaNode):
             self.radio.tx(self.id, "R0")
         else:
             logger.warning(f"Received unexpected mqtt message: {message.payload}")
-            return
-        self.update_state()
 
 
 def run(mqtt_client, radio):
@@ -160,16 +162,22 @@ def run(mqtt_client, radio):
     loranet_bridge = LoRaNetBridge(0, radio, mqtt_client)
     driveway_gate = DrivewayGate("Driveway Gate", 2, radio, mqtt_client)
 
-    # see readme for a dictionary of messages
     while True:
-        loranet_bridge.update_state()
-        driveway_gate.update_state()
-        time.sleep(15)
+        #loranet_bridge.update_state()
+        sender,packet = radio.listen()
+        if packet is None:
+            time.sleep(0.1)
+            continue
+        logger.debug(f"Rx from:{sender}, msg:{packet}")
+        if sender == 2:
+            driveway_gate.receive_status(packet);
 
 
 def main():
     # Eventually may put argparse/config file processing here.
-    logging.basicConfig(format="%(asctime)s %(threadName)s: %(message)s", level=logging.DEBUG)
+    logging.basicConfig(format="%(asctime)s.%(msecs)03d %(threadName)s: %(message)s",
+        level=logging.DEBUG,
+        datefmt="%H:%M:%S")
 
     radio = LoRaBase()
 
