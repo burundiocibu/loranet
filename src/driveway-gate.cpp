@@ -33,8 +33,9 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 #define GATE_VBAT A11 // (w divider)
 
 // 5 to 23 dB on this device
-int txpwr = 5;
+int txpwr = 23;
 
+int tx_rtt = 0;
 int gate_position = 0;
 int poe_status = 1;
 int gate_enable_status = 1;
@@ -62,8 +63,7 @@ void setup()
 
     // Console
     Serial.begin(115200);
-    while (!Serial)
-        delay(10);
+    //while (!Serial) delay(10);
     Serial.println("LoRaNet node");
 
     if (!manager.init())
@@ -99,16 +99,34 @@ void setup()
 }
 
 
-void send_msg(uint8_t from, String& msg)
+String runtime()
 {
-    Serial.println(msg);
-    rf95.setTxPower(txpwr);
-    if (!manager.sendtoWait((uint8_t*)msg.c_str(), msg.length(), from))
-        Serial.println("sendtoWait failed");
+    unsigned long ms=millis();
+    long sec = ms/1000;
+    ms -= sec * 1000;
+    long hour = sec / 3600;
+    sec -= hour*3600;
+    long min = sec/60;
+    sec -= min*60;
+
+    char buff[12];
+    sprintf(buff, "%ld:%02ld:%02ld.%03ld", hour, min, sec, ms);
+    return String(buff);
 }
 
 
-String status_msg()
+void send_msg(uint8_t dest, String& msg)
+{
+    Serial.println(runtime() + " Tx to:" + String(dest) + ", msg:" + msg);
+    rf95.setTxPower(txpwr);
+    unsigned long t0 = millis();
+    if (!manager.sendtoWait((uint8_t*)msg.c_str(), msg.length(), dest))
+        Serial.println(runtime() + " sendtoWait failed");
+    tx_rtt = millis() - t0;
+}
+
+
+void send_update(uint8_t dest)
 {
     float feather_vbat = analogRead(FEATHER_VBAT) * 2 * 3.3 / 1024;
     float gate_vbat = analogRead(GATE_VBAT) * 4.29 * 3.3/1024;
@@ -123,71 +141,91 @@ String status_msg()
     msg += String(",ut:") + String (millis()/1000);
     msg += String(",poe:") + String(poe_status);
     msg += String(",ge:") + String(gate_enable_status);
-    msg += String(",bv:") + String(rover.battery_voltage());
-    msg += String(",bp:") + String(rover.battery_percentage());
-    msg += String(",bc:") + String(rover.battery_capicity());
-    msg += String(",lv:") + String(rover.load_voltage());
-    msg += String(",lc:") + String(rover.load_current());
-    msg += String(",lo:") + String(rover.load_on());
-    msg += String(",sv:") + String(rover.solar_voltage());
-    msg += String(",sc:") + String(rover.solar_current());
-    msg += String(",cs:") + String(rover.charging_state());
-    return msg;
+    if (tx_rtt > 0)
+        msg += String(",rtt:") + String(tx_rtt);
+    send_msg(dest, msg);
+
+
+    float bv = rover.battery_voltage();
+    if (bv < 100)
+    {
+        msg += String(",bv:") + String(bv);
+        msg += String(",bp:") + String(rover.battery_percentage());
+        msg += String(",bc:") + String(rover.battery_capicity());
+        msg += String(",lv:") + String(rover.load_voltage());
+        msg += String(",lc:") + String(rover.load_current());
+        msg += String(",lo:") + String(rover.load_on());
+        msg += String(",sv:") + String(rover.solar_voltage());
+        msg += String(",sc:") + String(rover.solar_current());
+        msg += String(",cs:") + String(rover.charging_state());
+        send_msg(dest, msg);
+    }
 }
 
 
-void open_gate()
+void set_gate_position(int pos, int dest)
 {
-    digitalWrite(GATE_OPEN, 1);
-    delay(100);
-    digitalWrite(GATE_SAFE, 1);
-    delay(10);
-    digitalWrite(GATE_OPEN, 0);
-    gate_position = 100;
+    if (pos > 0)
+    {
+        digitalWrite(GATE_OPEN, 1);
+        delay(100);
+        digitalWrite(GATE_SAFE, 1);
+        delay(10);
+        digitalWrite(GATE_OPEN, 0);
+        gate_position = 100;
+    }
+    else
+    {
+        digitalWrite(GATE_OPEN, 0);
+        digitalWrite(GATE_SAFE, 0);
+        gate_position = 0;
+    }
+    send_msg(dest, String("gp:") + String(gate_position));
 }
 
 
-void close_gate()
+void set_poe(int poe, int dest)
 {
-    digitalWrite(GATE_OPEN, 0);
-    digitalWrite(GATE_SAFE, 0);
-    gate_position = 0;
+    poe_status = poe?1:0;
+    digitalWrite(POE_ENABLE, poe_status=poe_status);
+    send_msg(dest, String("poe:") + String(poe_status));
 }
 
+
+void set_rover_load(int load, int dest)
+{
+    rover.load_on(load);
+    send_msg(dest, String("ro:") + String(load));
+}
+
+
+unsigned long last_update = 0;
 
 void loop()
 {
-    if (!manager.available())
-    {
-        delay(10);
-        return;
-    }
-
     uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(rf95_buf);
     uint8_t from;
-
-    if (!manager.recvfromAck(rf95_buf, &len, &from))
+    
+    if (manager.available() && manager.recvfromAck(rf95_buf, &len, &from))
     {
-        Serial.println("recvfromAck error");
-        return;
+        rf95_buf[len] = '\0';
+        String msg((char*)rf95_buf);
+        Serial.println(runtime() + " Rx: " + msg);
+
+        if (msg=="GO")      set_gate_position(100, from);
+        else if (msg=="GC") set_gate_position(0, from);
+        else if (msg=="E1") set_poe(1, from);
+        else if (msg=="E0") set_poe(0, from);
+        else if (msg=="R1") set_rover_load(1, from);
+        else if (msg=="R0") set_rover_load(0, from);
     }
 
-    rf95_buf[len] = '\0';
-    String msg((char*)rf95_buf);
-    Serial.print(msg);
-    if (msg=="GO")
-        open_gate();
-    else if (msg=="GC")
-        close_gate();
-    else if (msg=="E1")
-        digitalWrite(POE_ENABLE, poe_status=1);
-    else if (msg=="E0")
-        digitalWrite(POE_ENABLE, poe_status=0);
-    else if (msg=="R1")
-        rover.load_on(1);
-    else if (msg=="R0")
-        rover.load_on(0);
-    msg = status_msg();
-    send_msg(from, msg);
+    const long update_rate = 15; // seconds
+    long dt = millis()/1000 - last_update;
+    if (last_update == 0 || dt > update_rate)
+    {
+        send_update(0);
+        last_update += update_rate;
+    }
 }

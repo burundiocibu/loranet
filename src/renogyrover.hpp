@@ -25,7 +25,7 @@ class RenogyRover
         float solar_voltage() {return 0.1 * read_register(263); }; // volts
         float solar_current() {return 0.01 * read_register(264); }; //amps
         float solar_power() {return 1.0 * read_register(265); }; // W
-        uint8_t load_on(bool v) {return node.writeSingleRegister(267, v?1:0); };
+        uint8_t load_on(bool v) {return node.writeSingleRegister(266, v?1:0); };
         float charging_ah_today() {return read_register(273); };
         float discharging_ah_today() {return read_register(274); };
         uint8_t charging_state() {return read_register(288) & 0xff; };
