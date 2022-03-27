@@ -37,8 +37,8 @@ int txpwr = 23;
 
 int tx_rtt = 0;
 int gate_position = 0;
-int poe_status = 1;
-int gate_enable_status = 1;
+int poe_enable = 1;
+int gate_enable = 1;
 
 RenogyRover rover(Serial1);
 
@@ -53,10 +53,10 @@ void setup()
     digitalWrite(GATE_SAFE, LOW);
 
     pinMode(GATE_ENABLE, OUTPUT);
-    digitalWrite(GATE_ENABLE, gate_enable_status);
+    digitalWrite(GATE_ENABLE, gate_enable);
 
     pinMode(POE_ENABLE, OUTPUT);
-    digitalWrite(POE_ENABLE, poe_status);
+    digitalWrite(POE_ENABLE, poe_enable);
 
     // modbus
     Serial1.begin(9600);
@@ -139,8 +139,8 @@ void send_update(uint8_t dest)
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
     msg += String(",ut:") + String (millis()/1000);
-    msg += String(",poe:") + String(poe_status);
-    msg += String(",ge:") + String(gate_enable_status);
+    msg += String(",poe:") + String(poe_enable);
+    msg += String(",ge:") + String(gate_enable);
     if (tx_rtt > 0)
         msg += String(",rtt:") + String(tx_rtt);
     send_msg(dest, msg);
@@ -149,9 +149,10 @@ void send_update(uint8_t dest)
     float bv = rover.battery_voltage();
     if (bv < 100)
     {
-        msg += String(",bv:") + String(bv);
+        msg = String("bv:") + String(bv);
         msg += String(",bp:") + String(rover.battery_percentage());
         msg += String(",bc:") + String(rover.battery_capicity());
+        msg += String(",ct:") + String(rover.controller_temperature());
         msg += String(",lv:") + String(rover.load_voltage());
         msg += String(",lc:") + String(rover.load_current());
         msg += String(",lo:") + String(rover.load_on());
@@ -184,11 +185,19 @@ void set_gate_position(int pos, int dest)
 }
 
 
-void set_poe(int poe, int dest)
+void set_poe_enable(int poe, int dest)
 {
-    poe_status = poe?1:0;
-    digitalWrite(POE_ENABLE, poe_status=poe_status);
-    send_msg(dest, String("poe:") + String(poe_status));
+    poe_enable = poe?1:0;
+    digitalWrite(POE_ENABLE, poe_enable);
+    send_msg(dest, String("poe:") + String(poe_enable));
+}
+
+
+void set_gate_enable(int ge, int dest)
+{
+    gate_enable = ge?1:0;
+    digitalWrite(gate_enable, gate_enable);
+    send_msg(dest, String("ge:") + String(gate_enable));
 }
 
 
@@ -213,12 +222,14 @@ void loop()
         String msg((char*)rf95_buf);
         Serial.println(runtime() + " Rx: " + msg);
 
-        if (msg=="GO")      set_gate_position(100, from);
-        else if (msg=="GC") set_gate_position(0, from);
-        else if (msg=="E1") set_poe(1, from);
-        else if (msg=="E0") set_poe(0, from);
-        else if (msg=="R1") set_rover_load(1, from);
-        else if (msg=="R0") set_rover_load(0, from);
+        if (msg=="GO")       set_gate_position(100, from);
+        else if (msg=="GC")  set_gate_position(0, from);
+        else if (msg=="GE1") set_gate_enable(1, from);
+        else if (msg=="GE0") set_gate_enable(0, from);
+        else if (msg=="E1")  set_poe_enable(1, from);
+        else if (msg=="E0")  set_poe_enable(0, from);
+        else if (msg=="R1")  set_rover_load(1, from);
+        else if (msg=="R0")  set_rover_load(0, from);
     }
 
     const long update_rate = 15; // seconds
