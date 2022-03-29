@@ -21,11 +21,18 @@ A user systemd unit is defined in
 
 Install it doing the following:
 ```bash
-mkdir -p ~/.config/systemd/user
-cp loranet/bridge/loranet-bridge.service ~/.config/systemd/user
 loginctl enable-linger $USER
-systemctl --user enable thin@redmine
+mkdir -p ~/.config/systemd/user
+cp loranet-bridge.service ~/.config/systemd/user
+systemctl --user enable loranet-bridge.service
+systemctl --user start loranet-bridge.service
+```
 
+To reload a changed service
+```bash
+systemctl --user disable loranet-bridge.service
+systemctl --user daemon-reload
+```
 
 
 ## LoRaNet nodes
