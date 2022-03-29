@@ -20,6 +20,20 @@ class DeviceConfig:
         self.sw_version = "v0.0.1"
         self.model = "virtual"
 
+
+class LoRaNode():
+    def __init__(self, name:str, id:int, radio, mqtt_client):
+        self.id = id
+        self.name = name
+        self.radio = radio
+        self.mqtt_client = mqtt_client
+        self.device_config = DeviceConfig(f"{self.name} Manager")
+
+    def update_state(self):
+        """update and publish the state of all entities"""
+        pass
+
+
 class EntityConfig:
     def __init__(self, name, device_class, device, topic):
         self.name = name
@@ -28,6 +42,7 @@ class EntityConfig:
         self.state_topic = f"{topic}/state"
         self.unique_id = "loranet-{}".format(cname(name))
         self.device = vars(device)
+
 
 class BaseEntity:
     def __init__(self, name, device_class, entity_class, 
@@ -52,6 +67,7 @@ class BaseEntity:
         if state is not None:
             self.state = state
         self.mqtt_client.publish(self.config.state_topic, self.state)
+
 
 #==================
 # Read only entites

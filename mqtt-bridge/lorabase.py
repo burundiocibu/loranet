@@ -27,6 +27,7 @@ display.show()
 
 logger = logging.getLogger(__name__)
 
+
 class LoRaBase():
     def __init__(self):
         # Configure LoRa Radio, https://circuitpython.readthedocs.io/projects/rfm9x/en/latest/
@@ -112,4 +113,3 @@ class LoRaBase():
                 n,v = s.split(':')
                 d[n] = v
         return d
-
