@@ -1,0 +1,12 @@
+[Unit]
+Description=Bridge LoRa radio to mqtt/prometheus
+
+[Service]
+Type=simple
+BASE_DIR=/home/littlej/git/loranet/bridge
+WorkingDirectory=$BASE_DIR
+Environment=PATH=$BASE_DIR/.venv/bin:$PATH
+ExecStart=$BASE_DIR/.venv/bin/python3 -m site
+
+[Install]
+WantedBy=default.target
