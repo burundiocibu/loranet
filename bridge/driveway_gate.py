@@ -3,7 +3,6 @@
 """ The central side othe the DrivewayGate LoRaNet node
 """
 
-import datetime
 import logging
 import os
 import time
@@ -69,9 +68,9 @@ class DrivewayGate(entities.LoRaNode):
             self.rover_battery_voltage.publish_state(float(msg["bv"]));
         if 'bp' in msg:
             self.rover_battery.publish_state(float(msg["bp"]))
-        if 'lv' in msg:
+        if 'lv' in msg and 'lc' in msg:
             self.rover_load_power.publish_state(round(float(msg["lv"]) * float(msg["lc"]),2))
-        if 'lv' in msg:
+        if 'sv' in msg and 'sc' in msg:
             self.rover_solar_power.publish_state(round(float(msg["sv"]) * float(msg["sc"]),2))
         if 'cs' in msg:
             self.rover_charge_state.publish_state(int(msg["cs"]))

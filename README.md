@@ -1,10 +1,13 @@
 # LoRaNet: a private network of LoRa nodes using the RadioHead library
-This is for a private network of LoRa nodes communicating to a single gateway which can plumb the entites into homeassistant compatable
-mqtt entities.
+This is for a private network of LoRa nodes communicating to a single gateway which can plumb the 
+entites into homeassistant compatable mqtt entities.
 
 ## LoRaNet bridge
 Python code to talk to a Adafruit LoRa feather via a LoRa bonnet attached to a raspberry pi.
 development is done in a python venv virtual environment (loranet/bridge/.venv)
+
+Note that this code is not intended to be a python package but run as a systemd service.
+
 
 ### Classes
     LoRaBase : Interface to the base station LoRa radio; no threads tx/rx calls can take hundreads of ms
