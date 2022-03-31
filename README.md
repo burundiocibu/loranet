@@ -20,7 +20,7 @@ define callbacks for objects that need
 
 ### systemd unit
 A user systemd unit is defined in
-`loranet/bridge/loranet-bridge.service`
+`bridge/loranet-bridge.service`
 
 Install it doing the following:
 ```bash
