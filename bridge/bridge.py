@@ -3,6 +3,8 @@
 """ A bridge between LoRaNet devices and MQTT. The local radio is an Adafruit LoRa bonnet for the raspberry pi
 """
 
+import argparse
+import asyncio
 import datetime
 import logging
 import os
@@ -37,9 +39,17 @@ class LoRaNetBridge(entities.LoRaNode):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="envoy-logger")
+    parser.add_argument('-v', "--verbose", action="count", help="Increase verbosity of outut", default=0)
+    args = parser.parse_args()
+
+    if   args.verbose == 0: level = logging.WARNING
+    elif args.verbose == 1: level = logging.INFO
+    elif args.verbose > 1:  level = logging.DEBUG
+
     # Eventually may put argparse/config file processing here.
     logging.basicConfig(format="%(asctime)s.%(msecs)03d %(threadName)s: %(message)s",
-        level=logging.INFO,
+        level=level,
         stream=sys.stdout,
         datefmt="%H:%M:%S")
 

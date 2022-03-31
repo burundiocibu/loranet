@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# These are really templates for entites and sets up auto discovery.
+# These started as templates for entites to set up auto discovery in home assistant
+# Now they are going to become a prometheus endpoint
 
 import json
 import logging
 import platform
+from prometheus_client import start_http_server, Gauge
+
 
 logger = logging.getLogger(__name__)
+
+basename = "loranet"
+port=9433
+start_http_server(port)
+
+gauge = Gauge(f"{basename}", "Entities from LoRaNet", ['entity', 'units'])
 
 def cname(string:str) -> str:
     return string.replace(" ","-").lower()
@@ -40,19 +49,19 @@ class EntityConfig:
         if device_class is not None:
             self.device_class = device_class
         self.state_topic = f"{topic}/state"
-        self.unique_id = "loranet-{}".format(cname(name))
+        self.unique_id = "{}-{}".format(basename, cname(name))
         self.device = vars(device)
 
 
 class BaseEntity:
-    def __init__(self, name, device_class, entity_class, 
-    device, mqtt_client, root_topic="loranet"):
+    def __init__(self, name, device_class, entity_class, device, mqtt_client, root_topic=basename):
         self.name = name
+        self.cname = cname(self.name)
         self.root_topic = root_topic
         self.mqtt_client = mqtt_client
         self.entity_class = entity_class
         self.device_class = device_class
-        self.topic = "{}/{}/{}".format(self.root_topic, self.entity_class, cname(self.name))
+        self.topic = f"{self.root_topic}/{self.entity_class}/{self.cname}"
         self.config = EntityConfig(self.name, self.device_class, device, self.topic)
         self.state = None
 
@@ -66,7 +75,17 @@ class BaseEntity:
     def publish_state(self, state=None):
         if state is not None:
             self.state = state
-        self.mqtt_client.publish(self.config.state_topic, self.state)
+            self.mqtt_client.publish(self.config.state_topic, self.state)
+
+        units="-"
+        if hasattr(self.config, 'unit_of_measurement'):
+            units=self.config.unit_of_measurement
+        state = self.state
+        if state=="on" or state=="ON":
+            state = 1
+        elif state=="off" or state=="OFF":
+            state = 0
+        gauge.labels(entity=self.cname, units=units).set(state)
 
 
 #==================
@@ -138,6 +157,7 @@ class Gate(BaseEntity):
     def publish_state(self):
         self.mqtt_client.publish(self.config.state_topic, self.state)
         self.mqtt_client.publish(self.config.position_topic, self.position)
+        gauge.labels(self.cname, "-").set(self.position)
 
 
 class Switch(BaseEntity):

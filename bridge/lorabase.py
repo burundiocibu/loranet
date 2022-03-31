@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""" Some window dressing on the adafruit rfm9x library
+""" Some window dressing on the adafruit rfm9x library...
 """
 
 import logging
@@ -11,7 +11,7 @@ import busio
 from digitalio import DigitalInOut, Direction, Pull
 import board
 import adafruit_ssd1306
-import adafruit_rfm9x
+import jcl_rfm9x
 
 
 # Create the I2C interface.
@@ -37,7 +37,7 @@ class LoRaBase():
         CS = DigitalInOut(board.CE1)
         RESET = DigitalInOut(board.D25)
         self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
-        self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
+        self.rfm9x = jcl_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
         self.tx_power = 23
         self.rfm9x.tx_power = self.tx_power
         self.rfm9x.node = 0

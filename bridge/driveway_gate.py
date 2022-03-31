@@ -95,8 +95,8 @@ class DrivewayGate(entities.LoRaNode):
                     self.gate.state = "closed"
                 self.gate.publish_state()
             logger.debug(f"{self.name} state updated")
-        except:
-            logger.warning(f"Error processing packet:{packet}")
+        except BaseException as e:
+            logger.warning(f"Error processing packet:{packet}, {e}")
 
     def gate_mqrx(self, mqtt_client, obj, message):
         if message.topic == self.gate.config.command_topic:
