@@ -33,9 +33,13 @@ class LoRaBase():
         # Configure LoRa Radio, https://circuitpython.readthedocs.io/projects/rfm9x/en/latest/
         # https://github.com/adafruit/Adafruit_CircuitPython_RFM9x
         # http://www.airspayce.com/mikem/arduino/RadioHead/classRH__RF95.html
+        # https://learn.adafruit.com/adafruit-radio-bonnets/pinouts
+        # https://www.hoperf.com/data/upload/portal/20190801/RFM95W-V2.0.pdf
 
         CS = DigitalInOut(board.CE1)
         RESET = DigitalInOut(board.D25)
+        #IRQ  = board.DIO0 # GPIO22 
+
         self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
         self.rfm9x = jcl_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
         self.tx_power = 23

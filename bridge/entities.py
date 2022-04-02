@@ -157,7 +157,7 @@ class Gate(BaseEntity):
     def publish_state(self):
         self.mqtt_client.publish(self.config.state_topic, self.state)
         self.mqtt_client.publish(self.config.position_topic, self.position)
-        gauge.labels(self.cname, "-").set(self.position)
+        gauge.labels(entity=self.cname, units="").set(self.position)
 
 
 class Switch(BaseEntity):
