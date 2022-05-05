@@ -70,7 +70,7 @@ class BaseEntity:
         msg = json.dumps(vars(self.config))
         logger.debug(f"discovery topic: {ha_discovery_topic}")
         logger.debug(f"discovery msg: {msg}")
-        self.mqtt_client.publish(ha_discovery_topic, msg)
+        self.mqtt_client.publish(ha_discovery_topic, msg, retain=True)
 
     def publish_state(self, state=None):
         if state is not None:

@@ -19,12 +19,14 @@ from driveway_gate import DrivewayGate
 logger = logging.getLogger(__name__)
 
 
-def on_disconnect():
-    logger.info(" mqtt disconnecting...")
+def on_disconnect(userdata, rc, properties):
+    logger.warning("mqtt disconnected.")
+    time.sleep(5)
+    mqtt_client.connect("duckling.groot")
 
 
 def on_connect(mqttc, obj, flags, rc):
-    logger.info("mqtt connect rc: " + str(rc))
+    logger.info("mqtt connected, rc: " + str(rc))
 
 
 class LoRaNetBridge(entities.LoRaNode):
