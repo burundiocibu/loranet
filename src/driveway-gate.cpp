@@ -9,7 +9,7 @@
 #include <RH_RF95.h>
 
 
-// for feather32u4 
+// for feather32u4
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 7 // This is from the pinout image, not the text
@@ -42,7 +42,27 @@ int gate_enable = 1;
 
 RenogyRover rover(Serial1);
 
-void setup() 
+long dt(unsigned long start_time)
+{
+    unsigned long now = millis();
+    if (now < start_time)
+        return now - start_time + 0x10000;
+    else
+        return now - start_time;
+}
+
+// returns uptime in seconds
+long uptime()
+{
+    static uint32_t last_millis = 0;
+    static uint32_t wraps = 0;
+    uint32_t ms = millis();
+    if (ms < last_millis)
+        wraps++;
+    return ms / 1000 + wraps * 4294967; // 4294967 = 2^32/1000
+}
+
+void setup()
 {
     pinMode(RFM95_RST, OUTPUT);
     digitalWrite(RFM95_RST, HIGH);
@@ -94,7 +114,7 @@ void setup()
     }
     Serial.print("Set Freq to: ");
     Serial.println(RF95_FREQ);
-  
+
     rf95.setTxPower(txpwr, false);
 }
 
@@ -122,7 +142,7 @@ void send_msg(uint8_t dest, String& msg)
     unsigned long t0 = millis();
     if (!manager.sendtoWait((uint8_t*)msg.c_str(), msg.length(), dest))
         Serial.println(runtime() + " sendtoWait failed");
-    tx_rtt = millis() - t0;
+    tx_rtt = dt(t0);
 }
 
 
@@ -138,7 +158,7 @@ void send_update(uint8_t dest)
     msg += String(",rssi:") + String(rf95.lastRssi());
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
-    msg += String(",ut:") + String (millis()/1000);
+    msg += String(",ut:") + String (uptime());
     msg += String(",poe:") + String(poe_enable);
     msg += String(",ge:") + String(gate_enable);
     if (tx_rtt > 0)
@@ -215,7 +235,7 @@ void loop()
     uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(rf95_buf);
     uint8_t from;
-    
+
     if (manager.available() && manager.recvfromAck(rf95_buf, &len, &from))
     {
         rf95_buf[len] = '\0';
@@ -232,9 +252,8 @@ void loop()
         else if (msg=="R0")  set_rover_load(0, from);
     }
 
-    const long update_rate = 15; // seconds
-    long dt = millis()/1000 - last_update;
-    if (last_update == 0 || dt > update_rate)
+    const long update_rate = 15000; // ms
+    if (last_update == 0 || dt(last_update) > update_rate)
     {
         send_update(0);
         last_update += update_rate;

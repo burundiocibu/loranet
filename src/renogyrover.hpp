@@ -14,7 +14,7 @@ class RenogyRover
 {
     public:
         RenogyRover(Stream &serial);
-        
+
         float battery_percentage() {return read_register(256); };
         float battery_voltage()    {return 0.1  * read_register(257); };  // Volts
         float battery_temperature() {return 1.0 * int8_t(read_register(259) & 0xff); }; // centigrade
@@ -28,7 +28,7 @@ class RenogyRover
         uint8_t load_on(bool v) {return node.writeSingleRegister(266, v?1:0); };
         float charging_ah_today() {return read_register(273); };
         float discharging_ah_today() {return read_register(274); };
-        uint8_t charging_state() {return read_register(288) & 0xff; };
+        int charging_state() {return read_register(288) & 0xff; };
         uint8_t load_on() {return read_register(288) >> 15 ; };
         float battery_capicity()   {return 0.1  * read_register(57346); };  // Ah
 
