@@ -60,6 +60,7 @@ def main():
     mqtt_username = os.environ.get("mqtt_username", "")
     mqtt_password = os.environ.get("mqtt_password", "")
 
+    global mqtt_client
     mqtt_client = mqtt.Client()
     mqtt_client.on_disconnect = on_disconnect
     mqtt_client.on_connect = on_connect
