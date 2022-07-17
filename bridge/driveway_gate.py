@@ -45,6 +45,7 @@ class DrivewayGate(entities.LoRaNode):
         self.rover_load_power = entities.Power(f"{self.name} Rover Load Power", self.device_config, mqtt_client)
         self.rover_solar_power = entities.Power(f"{self.name} Rover Solar Power", self.device_config, mqtt_client)
         self.rover_charge_state = entities.Sensor(f"{self.name} Rover Charge State", self.device_config, mqtt_client)
+        self.rover_temperature = entities.Temperature(f"{self.name} Rover Temperature", self.device_config, mqtt_client)
 
     def update_state(self):
         logger.info("Requesting state")
@@ -75,6 +76,8 @@ class DrivewayGate(entities.LoRaNode):
                 self.rover_solar_power.publish_state(round(float(msg["sv"]) * float(msg["sc"]),2))
             if 'cs' in msg:
                 self.rover_charge_state.publish_state(int(msg["cs"]))
+            if 'ct' in msg:
+                self.rover_temperature.publish_state(float(msg["ct"]))
             if 'poe' in msg:
                 if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
                 else:                     self.poe_enable.state = "ON"
