@@ -11,7 +11,7 @@ import busio
 from digitalio import DigitalInOut, Direction, Pull
 import board
 import adafruit_ssd1306
-import jcl_rfm9x
+import adafruit_rfm9x
 
 
 # Create the I2C interface.
@@ -38,10 +38,10 @@ class LoRaBase():
 
         CS = DigitalInOut(board.CE1)
         RESET = DigitalInOut(board.D25)
-        #IRQ  = board.DIO0 # GPIO22 
+        #IRQ  = board.DIO0 # GPIO22
 
         self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
-        self.rfm9x = jcl_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
+        self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
         self.tx_power = 23
         self.rfm9x.tx_power = self.tx_power
         self.rfm9x.node = 0
@@ -58,7 +58,7 @@ class LoRaBase():
         with self.rfm9x_lock:
             logger.debug("Start Tx")
             t0 = time.perf_counter()
-            self.rfm9x.destination = dest #  default is 255 (broadcast) 
+            self.rfm9x.destination = dest #  default is 255 (broadcast)
             self.tx_stats['count'] += 1
             if not self.rfm9x.send_with_ack(bytes(msg, "utf-8")):
                 self.tx_stats['err'] += 1
@@ -78,7 +78,7 @@ class LoRaBase():
             logger.debug("Start Rx")
             t0 = time.perf_counter()
             self.rfm9x.receive_timeout = timeout # seconds
-            self.rfm9x.destination = sender 
+            self.rfm9x.destination = sender
             packet = self.rfm9x.receive(with_header=True, with_ack=True)
             self.rx_stats['rtt'] = round(1000 * (time.perf_counter() - t0),0)
             sender = packet[1]
@@ -90,10 +90,10 @@ class LoRaBase():
             self.rx_stats['count'] += 1
             logger.debug(f"Rx from:{sender}, msg:{self.msg}")
             return packet
-        
+
     # note this has to be seperate since it can't ack and broadcast
     def broadcast(self, msg:str) -> None:
-        self.rfm9x.destination = 255 #  default is 255 (broadcast) 
+        self.rfm9x.destination = 255 #  default is 255 (broadcast)
         self.rfm9x.send(bytes(msg, "utf-8"))
 
     # note this has to be seperate since it can't ack and broadcast
@@ -101,7 +101,7 @@ class LoRaBase():
         with self.rfm9x_lock:
             t0 = time.perf_counter()
             self.rfm9x.listen()
-            self.rfm9x.destination = 0 #  default is 255 (broadcast) 
+            self.rfm9x.destination = 0 #  default is 255 (broadcast)
             self.rfm9x.receive_timeout = timeout # seconds
             packet = self.rfm9x.receive(with_header=True, with_ack=True, keep_listening=True)
             dt = round(1000 * (time.perf_counter() - t0), 0)

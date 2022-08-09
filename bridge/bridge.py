@@ -41,7 +41,7 @@ class LoRaNetBridge(entities.LoRaNode):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="envoy-logger")
+    parser = argparse.ArgumentParser(description="loranet bridge")
     parser.add_argument('-v', "--verbose", action="count", help="Increase verbosity of outut", default=0)
     args = parser.parse_args()
 
