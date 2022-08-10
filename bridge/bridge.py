@@ -18,11 +18,11 @@ from driveway_gate import DrivewayGate
 
 logger = logging.getLogger(__name__)
 
+time_to_die = False;
 
 def on_disconnect(userdata, rc, properties):
-    logger.warning("mqtt disconnected.")
-    time.sleep(5)
-    mqtt_client.connect("duckling.groot")
+    logger.warning("mqtt disconnected. terminating")
+    time_to_die = True
 
 
 def on_connect(mqttc, obj, flags, rc):
@@ -87,6 +87,8 @@ def main():
         logger.info(f"Rx from:{sender}, msg:{packet}")
         if sender == 2:
             driveway_gate.receive_status(packet);
+        if time_to_die:
+            return;
 
 
 if __name__ == "__main__":
