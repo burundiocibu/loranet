@@ -26,7 +26,7 @@ def on_disconnect(userdata, rc, properties):
 
 
 def on_connect(mqttc, obj, flags, rc):
-    logger.info("mqtt connected, rc: " + str(rc))
+    logger.warning("mqtt connected, rc: " + str(rc))
 
 
 class LoRaNetBridge(entities.LoRaNode):
