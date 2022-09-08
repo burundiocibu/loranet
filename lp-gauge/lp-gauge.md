@@ -6,22 +6,13 @@ diymall avr 32u4 processor with a SX1276 like lora radio
 18650 4.2V LiPo power cell connected to the jst battery
 
 ## Power
+From looking at the power draw on the scope, it takes the 32u4 2 ms to wake from sleep.
+Current draw during this period is approx 4 ma; its hard to measrure that.
+4.1 V * .0004 A * 0.002 s = 3.3 uJ
 
-Using the prosenb/DeepSleepScheduler and sleeping for 5 seconds between readings/tx
-about 5 mA use with calling rmf95.sleep() before going to sleep
+a 2 Ah LiPo cell has 3.7V * 2 Ah 3600 = 26.7 kJ
 
-When running & transmitting at 23 dB, current draw is about 140 mA
-
-That was while forgetting to shut off ah49e during sleep.
-
-With the ah49e powered off, I can't measure the draw with a 1ohm resistor and the scope.
-
-Entire wake, measure, tx, rx ack, sleep cycle takes about 950ms
-
-From looking at the current draw, the rx of the ack takes around 50 ms, the tx takes about 125 ms
-
-Wake to tx seems to take 700 ms!
-I think this is the rxfromack call...
+waking every second and doing nothing else, this cell would last 255 years
 
 
 ## Sensors

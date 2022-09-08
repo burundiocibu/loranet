@@ -8,8 +8,6 @@
 #include <avr/wdt.h>
 #include <avr/power.h>
 
-#include <DeepSleepScheduler.h>
-
 // http://www.airspayce.com/mikem/arduino/RadioHead/
 // http://www.airspayce.com/mikem/arduino/RadioHead/classRH__RF95.html
 #include <RHReliableDatagram.h>
@@ -45,15 +43,30 @@ int txpwr = 13;
 int tx_rtt = 0;
 
 
-
-long dt(unsigned long start_time)
+// watchdog interrupt
+ISR (WDT_vect)
 {
-    unsigned long now = millis();
-    if (now < start_time)
-        return now - start_time + 0x10000;
-    else
-        return now - start_time;
+    wdt_disable();
 }
+
+void deep_sleep(unsigned sec)
+{
+    for (unsigned naps = sec/4; naps; naps--)
+    {    // clear various "reset" flags
+        MCUSR = 0;
+        // allow changes, disable reset
+        WDTCSR = bit (WDCE) | bit (WDE);
+        // set interrupt mode and an interval
+        WDTCSR = bit (WDIE) | bit (WDP3);    // set WDIE, and 4 seconds delay
+        wdt_reset();  // pat the dog
+
+        set_sleep_mode (SLEEP_MODE_PWR_DOWN);
+        sleep_enable();
+        sleep_cpu();
+        sleep_disable();
+    }
+}
+
 
 void send_msg(uint8_t dest, String& msg)
 {
@@ -83,7 +96,7 @@ void send_update(uint8_t dest)
 }
 
 
-class LoraNode: public Runnable
+class LoraNode
 {
     private:
         const byte ledPin;  // LED to activate when running
@@ -92,7 +105,7 @@ class LoraNode: public Runnable
     public:
         LoraNode(byte ledPin, int interval) : ledPin(ledPin), interval(interval)
         {
-            //while (!Serial) delay(10);
+            while (!Serial) delay(10);
             led_ping(15);
 
             pinMode(ledPin, OUTPUT);
@@ -138,38 +151,49 @@ class LoraNode: public Runnable
 
         virtual void run()
         {
-            led_ping(5);
-            uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
-            uint8_t len = sizeof(rf95_buf);
-            uint8_t from;
-
-            if (manager.available() && manager.recvfromAck(rf95_buf, &len, &from))
-            {
-                rf95_buf[len] = '\0';
-                String msg((char*)rf95_buf);
-                Serial.println(" Rx: " + msg);
-            }
+            led_ping(1);
 
             digitalWrite(HALL_SENSOR_PWR, HIGH);
             send_update(0);
             digitalWrite(HALL_SENSOR_PWR, LOW);
             rf95.sleep();
-            led_ping(1);
-            scheduler.scheduleDelayed(this, interval);
+
+            uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
+            uint8_t len = sizeof(rf95_buf);
+            uint8_t from;
+
+            if (manager.available())
+            {
+                if (manager.recvfromAck(rf95_buf, &len, &from))
+                {
+                    rf95_buf[len] = '\0';
+                    String msg((char*)rf95_buf);
+                    Serial.println(" Rx: " + msg);
+                }
+            }
+            led_ping(3);
+            deep_sleep(interval);
         }
 };
 
 
+class LPGauge : public LoraNode
+{
+    LPGauge() : LoraNode(USER_LED, 12)
+    {
+    }
+};
+
+LoraNode *node;
+
 void setup()
 {
     Serial.begin(115200);
-
-    LoraNode *node = new LoraNode(USER_LED, 8000);
-    scheduler.schedule(node);
+    node = new LoraNode(USER_LED, 5000);
 }
 
 
 void loop()
 {
-    scheduler.execute();
+    node->run();
 }
