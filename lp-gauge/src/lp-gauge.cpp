@@ -19,7 +19,7 @@
 #define RFM95_CS 8
 #define VBAT 9  // connected to Vbatt through a divider network
 #define AH49E_OUT 10
-#define AH49E_PWR 11
+#define AH49E_GND 11
 #define DS18B20_D0 12
 #define USER_LED 13
 #define LIPO_CHARGER_EN PB0 // must be brough high to enable measuring or charging the battery
@@ -110,8 +110,8 @@ class LPGauge : public LoraNode
             LoraNode(USER_LED, id),
             ds(DS18B20_D0)
         {
-            pinMode(AH49E_PWR, OUTPUT);
-            digitalWrite(AH49E_PWR, LOW);
+            pinMode(AH49E_GND, OUTPUT);
+            digitalWrite(AH49E_GND, HIGH);
             pinMode(LIPO_CHARGER_EN, OUTPUT);
             digitalWrite(LIPO_CHARGER_EN, LOW);
             pinMode(DS18B20_PWR, OUTPUT);
@@ -136,10 +136,10 @@ class LPGauge : public LoraNode
         {
             led_ping(1);
 
-            digitalWrite(AH49E_PWR, HIGH);
+            digitalWrite(AH49E_GND, LOW);
             delay(2);
             ah49e_out = analogRead(AH49E_OUT) * 3.3 / 1024;
-            digitalWrite(AH49E_PWR, LOW);
+            digitalWrite(AH49E_GND, HIGH);
 
             digitalWrite(DS18B20_PWR, HIGH);
             byte addr[8] = {0x28, 0xC6, 0xE1, 0x76, 0xE0, 0x01, 0x3C, 0x9B};
@@ -186,5 +186,5 @@ void setup()
 void loop()
 {
     node->run();
-    deep_sleep(5000);
+    deep_sleep(5*60*1000);
 }

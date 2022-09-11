@@ -10,7 +10,7 @@ ISR (WDT_vect)
 }
 
 
-void deep_sleep(unsigned msec)
+void deep_sleep(unsigned long msec)
 {
 #ifdef DISABLE_SLEEP
     delay(msec);
