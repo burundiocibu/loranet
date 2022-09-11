@@ -1,4 +1,3 @@
-lp-gauge.md
 # lp-gauge
 
 ## Hardware
@@ -26,6 +25,9 @@ pin    function   TRS
 2      Gnd        shield
 3      out        tip
 
+The Vcc is connected to the Vbat pin on the board
+The Gnd is connected to pin 11 of the 32u4 and is brough high while sleeping to reduce energy usage
+
 This is potted in an RD2 cap from the LP tank's mechanical gauge with a 1m cable to the trs plug.
 
 ### DS18B20
@@ -37,3 +39,5 @@ Pin          TRS
 1    Gnd     shield
 2    Dq      tip
 3    Vdd     ring
+
+Vdd on this is connected to pin 6 on the 32u4 and is driven low while sleeping to reduce energy usage
