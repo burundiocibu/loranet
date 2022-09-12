@@ -140,11 +140,11 @@ class LPGauge : public LoraNode
             delay(2);
             ah49e_out = analogRead(AH49E_OUT) * 3.3 / 1024;
             digitalWrite(AH49E_GND, HIGH);
-
+/*
             digitalWrite(DS18B20_PWR, HIGH);
             byte addr[8] = {0x28, 0xC6, 0xE1, 0x76, 0xE0, 0x01, 0x3C, 0x9B};
             start_18B20(ds, addr);
-            deep_sleep(1000);     // maybe 750ms is enough, maybe not
+            deep_sleep(0.800);     // maybe 750ms is enough, maybe not
             ds18b20_tempc = read_18B20(ds, addr);
             digitalWrite(DS18B20_PWR, LOW);
 
@@ -152,7 +152,7 @@ class LPGauge : public LoraNode
             delay(2);
             vbat = analogRead(VBAT) * 4.244 / 1024;
             digitalWrite(LIPO_CHARGER_EN, LOW);
-
+*/
             send_update(0);
 
             uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -186,5 +186,5 @@ void setup()
 void loop()
 {
     node->run();
-    deep_sleep(5*60*1000);
+    deep_sleep(300);
 }

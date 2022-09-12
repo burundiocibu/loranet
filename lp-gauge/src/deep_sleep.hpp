@@ -10,14 +10,15 @@ ISR (WDT_vect)
 }
 
 
-void deep_sleep(unsigned long msec)
+void deep_sleep(float sec)
 {
+    unsigned long msec = 1000L * sec;
 #ifdef DISABLE_SLEEP
     delay(msec);
     return;
 #endif
 
-    unsigned remaining = msec;
+    unsigned long remaining = msec;
     while (remaining)
     {
         if (remaining < 16)
