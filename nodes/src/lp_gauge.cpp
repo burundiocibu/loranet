@@ -19,7 +19,7 @@
 #define RFM95_CS 8
 #define VBAT 9  // connected to Vbatt through a divider network
 #define AH49E_OUT 10
-#define AH49E_GND 11
+#define AH49E_PWR 11
 #define DS18B20_D0 12
 #define USER_LED 13
 #define LIPO_CHARGER_EN PB0 // must be brough high to enable measuring or charging the battery
@@ -34,7 +34,7 @@ class LoraNode
         int tx_rtt = 0;
         RH_RF95 rf95;
         RHReliableDatagram manager;
-        int txpwr = 13; // dBm, 5..23
+        int txpwr = 20; // dBm, 5..23
 
         LoraNode(byte ledPin, uint8_t id) :
             ledPin(ledPin), id(id),
@@ -110,8 +110,8 @@ class LPGauge : public LoraNode
             LoraNode(USER_LED, id),
             ds(DS18B20_D0)
         {
-            pinMode(AH49E_GND, OUTPUT);
-            digitalWrite(AH49E_GND, HIGH);
+            pinMode(AH49E_PWR, OUTPUT);
+            digitalWrite(AH49E_PWR, LOW);
             pinMode(LIPO_CHARGER_EN, OUTPUT);
             digitalWrite(LIPO_CHARGER_EN, LOW);
             pinMode(DS18B20_PWR, OUTPUT);
@@ -136,11 +136,11 @@ class LPGauge : public LoraNode
         {
             led_ping(1);
 
-            digitalWrite(AH49E_GND, LOW);
+            digitalWrite(AH49E_PWR, HIGH);
             delay(2);
             ah49e_out = analogRead(AH49E_OUT) * 3.3 / 1024;
-            digitalWrite(AH49E_GND, HIGH);
-/*
+            digitalWrite(AH49E_PWR, LOW);
+
             digitalWrite(DS18B20_PWR, HIGH);
             byte addr[8] = {0x28, 0xC6, 0xE1, 0x76, 0xE0, 0x01, 0x3C, 0x9B};
             start_18B20(ds, addr);
@@ -152,7 +152,7 @@ class LPGauge : public LoraNode
             delay(2);
             vbat = analogRead(VBAT) * 4.244 / 1024;
             digitalWrite(LIPO_CHARGER_EN, LOW);
-*/
+
             send_update(0);
 
             uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
