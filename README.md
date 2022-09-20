@@ -2,12 +2,9 @@
 This is for a private network of LoRa nodes communicating to a single gateway which can plumb the entites into homeassistant compatable mqtt entities and export
 prometheus endpoints for datalogging.
 
-# Devices
-Devices are embedded processors communicating with an attached lora radio.
-
 # Bridge
 ## LoRaNet bridge
-Python code to talk to a Adafruit LoRa feather via a LoRa bonnet attached to a raspberry pi.
+Python code to talk to a LoRa devices via a LoRa bonnet attached to a raspberry pi.
 Note that this code is not intended to be a python package but run as a systemd service.
 
 ## LoRaNet nodes
@@ -17,6 +14,9 @@ platform-io is the dev env for the Adafruit LoRa feather (avr 32u4 + )
 
 ## Not Inventing it here
 Ideas on making a LoRa <-> MQTT gateway and LoRa devices to deploy
+
+TTN: I don't have coverage here and don't want to put up a gateway.
+Also, I don't think I could get sub second responsiveness to commands.
 
 https://heltec-automation-docs.readthedocs.io/en/latest/general/subscribe_mqtt_messages.html
 

@@ -1,0 +1,8 @@
+{
+    "name": "LoraNode",
+    "version": "0.0.1",
+    "description": "Turning the RadioHead lib into a framework for a private net",
+    "dependencies": {
+        "mikem/RadioHead":"^1.120"
+    }
+}

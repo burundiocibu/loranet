@@ -1,13 +1,11 @@
 // -*- coding: utf-8 -*-
-#include "renogyrover.hpp"
-
-#include <SPI.h>
 
 // http://www.airspayce.com/mikem/arduino/RadioHead/
 // http://www.airspayce.com/mikem/arduino/RadioHead/classRH__RF95.html
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 
+#include "renogyrover.hpp"
 
 // for feather32u4
 #define RFM95_CS 8
