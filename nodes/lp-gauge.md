@@ -41,3 +41,7 @@ Pin          TRS
 3    Vdd     ring
 
 Vdd on this is connected to pin 6 on the 32u4 and is driven low while sleeping to reduce energy usage
+
+# lora/avr32u4 power-usage-notes
+
+Started run 9/14/2022 with one 18640 2.88 Ah (measured)  cell
