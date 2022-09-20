@@ -7,7 +7,7 @@
 
 #include "OneWireWrapper.hpp"
 
-//#define DISABLE_SLEEP
+#define DISABLE_SLEEP
 #include "deep_sleep.hpp"
 
 // 32u4 i/o assignments
@@ -93,15 +93,16 @@ class LoraNode
 };
 
 
-class LPGauge : public LoraNode
+class DevNode : public LoraNode
 {
     private:
         OneWire ds;
         float vbat;
         float ds18b20_tempc;
+        byte ds18b20_addr[8] = {0,0,0,0,0,0,0,0};
 
     public:
-        LPGauge(uint8_t id) :
+        DevNode(uint8_t id) :
             LoraNode(USER_LED, id),
             ds(DS18B20_D0)
         {
@@ -109,6 +110,7 @@ class LPGauge : public LoraNode
             digitalWrite(LIPO_CHARGER_EN, LOW);
             pinMode(DS18B20_PWR, OUTPUT);
             digitalWrite(DS18B20_PWR, LOW);
+
         }
 
         void send_update(uint8_t dest)
@@ -128,12 +130,16 @@ class LPGauge : public LoraNode
         {
             led_ping(1);
 
-
             digitalWrite(DS18B20_PWR, HIGH);
-            byte addr[8] = {0x28, 0xC6, 0xE1, 0x76, 0xE0, 0x01, 0x3C, 0x9B};
-            start_18B20(ds, addr);
-            deep_sleep(0.800);     // maybe 750ms is enough, maybe not
-            ds18b20_tempc = read_18B20(ds, addr);
+            // This will find all devices but use the last found
+            if (ds18b20_addr[0] == 0)
+            {
+                deep_sleep(0.1);
+                scan_bus(ds, ds18b20_addr);
+            }
+            start_18B20(ds, ds18b20_addr);
+            deep_sleep(0.800);
+            ds18b20_tempc = read_18B20(ds, ds18b20_addr);
             digitalWrite(DS18B20_PWR, LOW);
 
             digitalWrite(LIPO_CHARGER_EN, HIGH);
@@ -161,13 +167,13 @@ class LPGauge : public LoraNode
         }
 };
 
-LPGauge *node;
+DevNode *node;
 
 void setup()
 {
     Serial.begin(115200);
     while (!Serial) delay(10);
-    node = new LPGauge(4);
+    node = new DevNode(4);
 }
 
 

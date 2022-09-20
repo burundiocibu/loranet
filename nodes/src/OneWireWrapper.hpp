@@ -52,15 +52,12 @@ float read_18B20(OneWire& ds, byte* addr)
 }
 
 
-void scan_bus(OneWire ds)
+void scan_bus(OneWire ds, byte *addr)
 {
-    byte i;
-    byte addr[8];
-
     while (ds.search(addr))
     {
         Serial.print("ROM =");
-        for( i = 0; i < 8; i++)
+        for(byte i = 0; i < 8; i++)
         {
             Serial.write(' ');
             Serial.print(addr[i], HEX);
@@ -71,7 +68,6 @@ void scan_bus(OneWire ds)
             Serial.println("CRC is not valid!");
             continue;
         }
-        Serial.println();
 
         // the first ROM byte indicates which chip
         switch (addr[0])
@@ -90,7 +86,7 @@ void scan_bus(OneWire ds)
                 continue;
         }
         start_18B20(ds, addr);
-        delay(1000);
+        delay(800);
         float temp_c = read_18B20(ds, addr);
         Serial.print("Temperature=");
         Serial.println(temp_c);
@@ -99,6 +95,5 @@ void scan_bus(OneWire ds)
     Serial.println("No more addresses.");
     Serial.println();
     ds.reset_search();
-    delay(250);
     return;
 }
