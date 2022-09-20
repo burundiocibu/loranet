@@ -1,0 +1,8 @@
+{
+    "name": "OneWireWrapper",
+    "version": "0.0.1",
+    "description": "A simple wrapper on standard one wire calls",
+    "dependencies": {
+        "paulstoffregen/OneWire":"^2.3.7"
+    }
+}

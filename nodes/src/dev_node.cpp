@@ -1,10 +1,10 @@
 // -*- coding: utf-8 -*-
 
-#include "LoraNode.hpp"
-#include "OneWireWrapper.hpp"
+#include <LoraNode.hpp>
+#include <OneWireWrapper.hpp>
 
 #define DISABLE_SLEEP
-#include "deep_sleep.hpp"
+#include <DeepSleep.hpp>
 
 // 32u4 i/o assignments
 #define DS18B20_PWR 6
