@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""" The central side othe the DrivewayGate LoRaNet node
+""" The central side of the the DrivewayGate LoRaNet node
 """
 
 import logging

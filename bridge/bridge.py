@@ -15,6 +15,7 @@ import sys
 from lorabase import LoRaBase
 import entities
 from driveway_gate import DrivewayGate
+from lp_gauge import LPGauge
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,8 @@ def main():
 
     loranet_bridge = LoRaNetBridge(0, radio, mqtt_client)
     driveway_gate = DrivewayGate("Driveway Gate", 2, radio, mqtt_client)
+    lp_gauge = LPGauge("LP Gauge", 3, radio, mqtt_client)
+    dev_node = LPGauge("Dev Node", 4, radio, mqtt_client)
 
     while True:
         #loranet_bridge.update_state()
@@ -85,8 +88,9 @@ def main():
             time.sleep(0.1)
             continue
         logger.info(f"Rx from:{sender}, msg:{packet}")
-        if sender == 2:
-            driveway_gate.receive_status(packet);
+        if sender == 2:   driveway_gate.receive_status(packet)
+        elif sender == 3: lp_gauge.receive_status(packet)
+        elif sender == 4: dev_node.receive_status(packet)
         if time_to_die:
             return;
 
