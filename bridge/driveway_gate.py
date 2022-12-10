@@ -40,10 +40,18 @@ class DrivewayGate(entities.LoRaNode):
         self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
         self.rtt = entities.Sensor(f"{self.name} rtt", self.device_config, mqtt_client, "ms")
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
+
         self.rover_battery_voltage = entities.Voltage(f"{self.name} Rover Battery Voltage", self.device_config, mqtt_client)
+        self.rover_battery_current = entities.Current(f"{self.name} Rover Battery Current", self.device_config, mqtt_client)
         self.rover_battery = entities.BatteryLevel(f"{self.name} Rover Battery", self.device_config, mqtt_client)
+
+        self.rover_load_voltage = entities.Voltage(f"{self.name} Rover Load Voltage", self.device_config, mqtt_client)
+        self.rover_load_current = entities.Current(f"{self.name} Rover Load Current", self.device_config, mqtt_client)
         self.rover_load_power = entities.Power(f"{self.name} Rover Load Power", self.device_config, mqtt_client)
+
         self.rover_solar_power = entities.Power(f"{self.name} Rover Solar Power", self.device_config, mqtt_client)
+        self.rover_solar_voltage = entities.Voltage(f"{self.name} Solar Voltage", self.device_config, mqtt_client)
+        self.rover_solar_current = entities.Current(f"{self.name} Solar Current", self.device_config, mqtt_client)
         self.rover_charge_state = entities.Sensor(f"{self.name} Rover Charge State", self.device_config, mqtt_client)
         self.rover_temperature = entities.Temperature(f"{self.name} Rover Temperature", self.device_config, mqtt_client)
 
@@ -66,14 +74,24 @@ class DrivewayGate(entities.LoRaNode):
                 self.gate_battery_voltage.publish_state(float(msg["gvb"]))
             if 'ut' in msg:
                 self.uptime.publish_state(int(msg["ut"]))
+
             if 'bv' in msg:
                 self.rover_battery_voltage.publish_state(float(msg["bv"]));
+            if 'bc' in msg:
+                self.rover_battery_current.publish_state(float(msg["bc"]));
             if 'bp' in msg:
                 self.rover_battery.publish_state(float(msg["bp"]))
+
             if 'lv' in msg and 'lc' in msg:
-                self.rover_load_power.publish_state(round(float(msg["lv"]) * float(msg["lc"]),2))
+                self.rover_load_voltage.publish_state(round(float(msg["lv"]),2))
+                self.rover_load_current.publish_state(round(0.33*float(msg["lc"]),2)) # for some reason this reads high
+                self.rover_load_power.publish_state(round(0.33*float(msg["lv"]) * float(msg["lc"]),2))
+
             if 'sv' in msg and 'sc' in msg:
+                self.rover_solar_voltage.publish_state(round(float(msg["sv"]),2))
+                self.rover_solar_current.publish_state(round(float(msg["sc"]),2))
                 self.rover_solar_power.publish_state(round(float(msg["sv"]) * float(msg["sc"]),2))
+
             if 'cs' in msg:
                 self.rover_charge_state.publish_state(int(msg["cs"]))
             if 'ct' in msg:
