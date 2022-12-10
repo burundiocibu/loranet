@@ -146,7 +146,9 @@ void send_msg(uint8_t dest, String& msg)
 
 void send_update(uint8_t dest)
 {
+    // LiIon pack directly connected to feather
     float feather_vbat = analogRead(FEATHER_VBAT) * 2 * 3.3 / 1024;
+    // Gel-cell that powers the gate controller board
     float gate_vbat = analogRead(GATE_VBAT) * 4.29 * 3.3/1024;
 
     String msg;
@@ -168,15 +170,19 @@ void send_update(uint8_t dest)
     if (bv < 100)
     {
         msg = String("bv:") + String(bv);
+        msg += String(",bc:") + String(rover.battery_current());
         msg += String(",bp:") + String(rover.battery_percentage());
-        msg += String(",bc:") + String(rover.battery_capicity());
+        msg += String(",bs:") + String(rover.battery_size());
         msg += String(",ct:") + String(rover.controller_temperature());
         msg += String(",lv:") + String(rover.load_voltage());
         msg += String(",lc:") + String(rover.load_current());
+        msg += String(",lp:") + String(rover.load_power());
         msg += String(",lo:") + String(rover.load_on());
         msg += String(",sv:") + String(rover.solar_voltage());
         msg += String(",sc:") + String(rover.solar_current());
+        msg += String(",cp:") + String(rover.charging_power());
         msg += String(",cs:") + String(rover.charging_state());
+        msg += String(",cf:") + String(rover.controller_fault(), HEX);
         send_msg(dest, msg);
     }
 }
