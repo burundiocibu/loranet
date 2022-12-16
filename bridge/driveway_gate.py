@@ -50,8 +50,8 @@ class DrivewayGate(entities.LoRaNode):
         self.rover_load_power = entities.Power(f"{self.name} Rover Load Power", self.device_config, mqtt_client)
 
         self.rover_solar_power = entities.Power(f"{self.name} Rover Solar Power", self.device_config, mqtt_client)
-        self.rover_solar_voltage = entities.Voltage(f"{self.name} Solar Voltage", self.device_config, mqtt_client)
-        self.rover_solar_current = entities.Current(f"{self.name} Solar Current", self.device_config, mqtt_client)
+        self.rover_solar_voltage = entities.Voltage(f"{self.name} Rover Solar Voltage", self.device_config, mqtt_client)
+        self.rover_solar_current = entities.Current(f"{self.name} Rover Solar Current", self.device_config, mqtt_client)
         self.rover_charge_state = entities.Sensor(f"{self.name} Rover Charge State", self.device_config, mqtt_client)
         self.rover_temperature = entities.Temperature(f"{self.name} Rover Temperature", self.device_config, mqtt_client)
 
@@ -94,20 +94,25 @@ class DrivewayGate(entities.LoRaNode):
 
             if 'cs' in msg:
                 self.rover_charge_state.publish_state(int(msg["cs"]))
+
             if 'ct' in msg:
                 self.rover_temperature.publish_state(float(msg["ct"]))
+
             if 'poe' in msg:
                 if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
                 else:                     self.poe_enable.state = "ON"
                 self.poe_enable.publish_state()
+
             if 'ge' in msg:
                 if int(msg["ge"]) == 0:  self.gate_enable.state = "OFF"
                 else:                    self.gate_enable.state = "ON"
                 self.gate_enable.publish_state()
+
             if 'lo' in msg:
                 if int(msg["lo"]) == 0:  self.rover_load_enable.state = "OFF"
                 else:                    self.rover_load_enable.state = "ON"
                 self.rover_load_enable.publish_state()
+
             if 'gp' in msg:
                 self.gate.position = int(msg["gp"])
                 if self.gate.position > 0:
