@@ -75,7 +75,8 @@ class BaseEntity:
     def publish_state(self, state=None):
         if state is not None:
             self.state = state
-            self.mqtt_client.publish(self.config.state_topic, self.state)
+        self.mqtt_client.publish(self.config.state_topic, self.state)
+
 
         units="-"
         if hasattr(self.config, 'unit_of_measurement'):
