@@ -84,8 +84,8 @@ class DrivewayGate(entities.LoRaNode):
 
             if 'lv' in msg and 'lc' in msg:
                 self.rover_load_voltage.publish_state(round(float(msg["lv"]),2))
-                self.rover_load_current.publish_state(round(0.33*float(msg["lc"]),2)) # for some reason this reads high
-                self.rover_load_power.publish_state(round(0.33*float(msg["lv"]) * float(msg["lc"]),2))
+                self.rover_load_current.publish_state(round(float(msg["lc"]),2)) # for some reason this reads high
+                self.rover_load_power.publish_state(round(float(msg["lv"]) * float(msg["lc"]),2))
 
             if 'sv' in msg and 'sc' in msg:
                 self.rover_solar_voltage.publish_state(round(float(msg["sv"]),2))
