@@ -35,10 +35,11 @@ int txpwr = 23;
 
 int tx_rtt = 0;
 int gate_position = 0;
-int poe_enable = 1;
+int poe_enable = 0;
 int gate_enable = 1;
+int rover_load_enable = 1;
 
-RenogyRover rover(Serial1);
+RenogyRover rover(Serial1, 1);
 
 long dt(unsigned long start_time)
 {
@@ -114,6 +115,11 @@ void setup()
     Serial.println(RF95_FREQ);
 
     rf95.setTxPower(txpwr, false);
+
+    // Always start with the rover on
+    if (!rover.load_on())
+        rover.load_on(1);
+
 }
 
 
@@ -172,7 +178,6 @@ void send_update(uint8_t dest)
         msg = String("bv:") + String(bv);
         msg += String(",bc:") + String(rover.battery_current());
         msg += String(",bp:") + String(rover.battery_percentage());
-        msg += String(",bs:") + String(rover.battery_size());
         msg += String(",ct:") + String(rover.controller_temperature());
         msg += String(",lv:") + String(rover.load_voltage());
         msg += String(",lc:") + String(rover.load_current());
@@ -183,6 +188,7 @@ void send_update(uint8_t dest)
         msg += String(",cp:") + String(rover.charging_power());
         msg += String(",cs:") + String(rover.charging_state());
         msg += String(",cf:") + String(rover.controller_fault(), HEX);
+        msg += String(",dl:") + String(rover.discharging_limit_voltage());
         send_msg(dest, msg);
     }
 }
@@ -220,15 +226,16 @@ void set_poe_enable(int poe, int dest)
 void set_gate_enable(int ge, int dest)
 {
     gate_enable = ge?1:0;
-    digitalWrite(gate_enable, gate_enable);
+    digitalWrite(GATE_ENABLE, gate_enable);
     send_msg(dest, String("ge:") + String(gate_enable));
 }
 
 
 void set_rover_load(int load, int dest)
 {
+    rover_load_enable = load;
     rover.load_on(load);
-    send_msg(dest, String("ro:") + String(load));
+    send_msg(dest, String("lo:") + String(load));
 }
 
 

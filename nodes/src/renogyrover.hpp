@@ -2,6 +2,10 @@
 
 // https://github.com/4-20ma/ModbusMaster
 #include <ModbusMaster.h>
+
+// The modbus ICD for the renogy rover/wander series
+// https://docs.google.com/document/d/1OSW3gluYNK8d_gSz4Bk89LMQ4ZrzjQY6/edit
+
 // chaging_state:
 // 0 deactivated
 // 1 activated
@@ -14,11 +18,11 @@
 class RenogyRover
 {
     public:
-        RenogyRover(Stream &serial);
+        RenogyRover(Stream &serial, uint8_t load);
 
         float battery_percentage() {return read_register(0x0100); };
         float battery_voltage() {return 0.1  * read_register(0x0101); };  // Volts
-        float battery_current() {return 0.01 * read_register(0x0102); }; // Amps
+        float battery_current() {return 0.01 * read_register(0x0102); }; // Amps delivered to battery, zero for drain?
         float battery_temperature() {return 1.0 * int8_t(read_register(0x0103) & 0xff); }; // centigrade
         float controller_temperature() {return 1.0 * int8_t((read_register(259)>>8) & 0xff); }; // centigrade
         float load_voltage() {return 0.1 * read_register(0x0104); }; // volts
@@ -33,8 +37,8 @@ class RenogyRover
         int charging_state() {return read_register(0x0120) & 0xff; };
         uint8_t load_on() {return read_register(0x120) >> 15 ; };
         uint16_t controller_fault() {return read_register(0x0121); };
-        float battery_size() {return 0.1  * read_register(0xe002); };  // Ah
-        uint16_t battery_type() {return read_register(0xe003); };
+        uint16_t battery_type() {return read_register(0xe004); };
+        float discharging_limit_voltage() {return 0.1 * read_register(0xe00e); };
 
     private:
         ModbusMaster node;
