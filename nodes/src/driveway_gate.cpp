@@ -7,6 +7,7 @@
 
 #include "renogyrover.hpp"
 #include "tb67h420.hpp"
+#include "utils.hpp"
 
 // for feather32u4
 #define RFM95_RST 4
@@ -33,6 +34,7 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 #define TB67_LO2 3
 TB67H420 tb67(TB67_PWMA, TB67_INA1, TB67_INA2, TB67_LO1, TB67_LO2);
 
+
 // A pulsecounting encoder on the linear motor
 // one is for an analog read and the other is to generate interrupts
 // They are both the same signal coming from the encoder.
@@ -53,7 +55,7 @@ void setup()
 {
     // Console
     Serial.begin(115200);
-    //while (!Serial) delay(10);
+    while (!Serial) delay(10);
     Serial.println("LoRaNet node");
 
     pinMode(RFM95_RST, OUTPUT);
@@ -98,44 +100,6 @@ void setup()
 
     if (rover.load_on() != rover_load_enable)
         rover.load_on(rover_load_enable);
-
-}
-
-long dt(unsigned long start_time)
-{
-    unsigned long now = millis();
-    if (now < start_time)
-        return now - start_time + 0x10000;
-    else
-        return now - start_time;
-}
-
-
-// returns uptime in seconds
-long uptime()
-{
-    static uint32_t last_millis = 0;
-    static uint32_t wraps = 0;
-    uint32_t ms = millis();
-    if (ms < last_millis)
-        wraps++;
-    return ms / 1000 + wraps * 4294967; // 4294967 = 2^32/1000
-}
-
-
-String runtime()
-{
-    unsigned long ms=millis();
-    long sec = ms/1000;
-    ms -= sec * 1000;
-    long hour = sec / 3600;
-    sec -= hour*3600;
-    long min = sec/60;
-    sec -= min*60;
-
-    char buff[12];
-    sprintf(buff, "%ld:%02ld:%02ld.%03ld", hour, min, sec, ms);
-    return String(buff);
 }
 
 
@@ -208,7 +172,6 @@ void set_rover_load(int load, int dest)
 }
 
 
-unsigned long last_update = 0;
 
 void loop()
 {
@@ -228,9 +191,10 @@ void loop()
         else if (msg=="R0")  set_rover_load(0, from);
     }
 
-    const long last_motor_update = 0;
-    const long motor_update_rate = tb67.get_pwm_period() * 3;
-    if (dt(last_motor_update) > motor_update_rate)
+
+    static unsigned long last_motor_update = 0;
+    const long motor_update_rate = tb67.get_pwm_period() * 30;
+    if (if_dt(last_motor_update, motor_update_rate))
     {
         static int delta=5;
         static int dir = 1;
@@ -240,16 +204,14 @@ void loop()
         else if (pwm >= 100)
             dir = -1;
         tb67.set_pwm_duty(pwm + delta*dir);
+        Serial.print(runtime() + " pwm_duty:"); Serial.println(tb67.get_pwm_duty());
     }
 
 
-    const long update_rate = 5000; // ms
-    if (last_update == 0 || dt(last_update) > update_rate)
+    static unsigned long last_update = 0;
+    if (if_dt(last_update, 5000))
     {
         send_update(0);
-        Serial.print(runtime() + " pwm_duty:");
-        Serial.println(tb67.get_pwm_duty());
-        last_update += update_rate;
     }
 }
 

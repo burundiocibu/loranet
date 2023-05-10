@@ -19,7 +19,7 @@ TB67H420::TB67H420(uint8_t pwma, uint8_t ina1, uint8_t ina2, uint8_t lo1, uint8_
     digitalWrite(ina2, LOW);
     pinMode(lo1, INPUT);
     pinMode(lo2, INPUT);
-
+    
     // PWM is being generated on Arduino pin 5
     // 32u4 pin 31, port C6, OC.3A
     // Using Timer 3 output compare A
@@ -34,7 +34,7 @@ TB67H420::TB67H420(uint8_t pwma, uint8_t ina1, uint8_t ina2, uint8_t lo1, uint8_
     TCCR3B = _BV(CS31) | _BV(CS30);
 
     pwm_top = 0x3ff;
-    pwm_period = 64 * 1000 / 3910; // ms
+    pwm_period = 64 / 3.91; // ms
     set_pwm_duty(0);
 }
 
@@ -62,5 +62,5 @@ void TB67H420::run(int speed)
 
 int TB67H420::error()
 {
-    return !digitalRead(lo1) | !digitalRead(lo2) << 1;
+    return ~digitalRead(lo1) | ~digitalRead(lo2) << 1;
 }
