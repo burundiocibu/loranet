@@ -6,7 +6,7 @@
 #include <RH_RF95.h>
 
 #include "renogyrover.hpp"
-
+#include "tb67h420.hpp"
 
 // for feather32u4
 #define RFM95_RST 4
@@ -26,18 +26,12 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 
 #define ROVER_VLOAD A11 // (w divider)
 
-// I/O to TB67H420 motor driver
-// Note that HBMODE is jumpered high on board.
 #define TB67_PWMA 5
 #define TB67_INA1 10
 #define TB67_INA2 11
 #define TB67_LO1 6
 #define TB67_LO2 3
-
-
-uint16_t pwm_top = 0;
-float pwm_duty = 0;
-float pwm_freq = 0;
+TB67H420 tb67(TB67_PWMA, TB67_INA1, TB67_INA2, TB67_LO1, TB67_LO2);
 
 // A pulsecounting encoder on the linear motor
 // one is for an analog read and the other is to generate interrupts
@@ -55,8 +49,6 @@ int rover_load_enable = 1;
 RenogyRover rover(Serial1, 1);
 
 
-
-
 void setup()
 {
     // Console
@@ -69,15 +61,6 @@ void setup()
 
     pinMode(GATE_LOCK, OUTPUT);
     digitalWrite(GATE_LOCK, LOW);
-
-    pinMode(TB67_PWMA, OUTPUT);
-    digitalWrite(TB67_PWMA, LOW);
-    pinMode(TB67_INA1, OUTPUT);
-    digitalWrite(TB67_INA1, LOW);
-    pinMode(TB67_INA2, OUTPUT);
-    digitalWrite(TB67_INA2, LOW);
-    pinMode(TB67_LO1, INPUT);
-    pinMode(TB67_LO2, INPUT);
 
     if (!manager.init())
         Serial.println("manager init failed");
@@ -116,22 +99,6 @@ void setup()
     if (rover.load_on() != rover_load_enable)
         rover.load_on(rover_load_enable);
 
-    // PWM is being generated on Arduino pin 5
-    // 32u4 pin 31, port C6, OC.3A
-    // Using Timer 3 output compare A
-
-    // See tables 14-3 and 14-5
-    // COM3A[1:0] = 10 - Clear OC3A on compare match, Set OC3A at TOP
-    // WGM3[3:0] = 111 - Fast PWM, 10-bit, TOP=0x03FF TOP TOP
-    TCCR3A = _BV(COM3A1) | _BV(WGM32) | _BV(WGM31) | _BV(WGM30);
-    
-    // Table 14-6
-    // CS0[2:0] = 011, /64 prescaler, about 61 Hz
-    TCCR3B = _BV(CS31) | _BV(CS30);
-
-    pwm_top = 0x3ff;
-    pwm_freq = 3910.0 / 64; // 16 ms/cycle
-    OCR3A = (pwm_duty/100) * pwm_top;
 }
 
 long dt(unsigned long start_time)
@@ -143,6 +110,7 @@ long dt(unsigned long start_time)
         return now - start_time;
 }
 
+
 // returns uptime in seconds
 long uptime()
 {
@@ -153,7 +121,6 @@ long uptime()
         wraps++;
     return ms / 1000 + wraps * 4294967; // 4294967 = 2^32/1000
 }
-
 
 
 String runtime()
@@ -261,21 +228,27 @@ void loop()
         else if (msg=="R0")  set_rover_load(0, from);
     }
 
+    const long last_motor_update = 0;
+    const long motor_update_rate = tb67.get_pwm_period() * 3;
+    if (dt(last_motor_update) > motor_update_rate)
+    {
+        static int delta=5;
+        static int dir = 1;
+        int pwm = tb67.get_pwm_duty();
+        if (pwm <= 0)
+            dir = 1;
+        else if (pwm >= 100)
+            dir = -1;
+        tb67.set_pwm_duty(pwm + delta*dir);
+    }
+
 
     const long update_rate = 5000; // ms
     if (last_update == 0 || dt(last_update) > update_rate)
     {
-        static float delta = 5;
-        static int dir = -1;
-        if (pwm_duty <= 0)
-            dir = 1;
-        else if (pwm_duty >= 100)
-            dir = -1;
-        pwm_duty += dir * delta;
-        OCR3A = (pwm_duty/100) * pwm_top;
         send_update(0);
         Serial.print(runtime() + " pwm_duty:");
-        Serial.println(pwm_duty);
+        Serial.println(tb67.get_pwm_duty());
         last_update += update_rate;
     }
 }
