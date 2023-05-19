@@ -6,7 +6,7 @@
 #include <RH_RF95.h>
 
 #include "renogyrover.hpp"
-#include "tb67h420.hpp"
+#include "md10c.hpp"
 #include "utils.hpp"
 
 // for feather32u4
@@ -27,12 +27,9 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 
 #define ROVER_VLOAD A11 // (w divider)
 
-#define TB67_PWMA 5
-#define TB67_INA1 10
-#define TB67_INA2 11
-#define TB67_LO1 6
-#define TB67_LO2 3
-TB67H420 tb67(TB67_PWMA, TB67_INA1, TB67_INA2, TB67_LO1, TB67_LO2);
+#define MD10C_PWM 5
+#define MD10C_DIR 10
+MD10C motor(MD10C_PWM, MD10C_DIR);
 
 
 // A pulsecounting encoder on the linear motor
@@ -131,7 +128,7 @@ void send_update(uint8_t dest)
     msg += String(",rssi:") + String(rf95.lastRssi());
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
-    msg += String(",ut:") + String (uptime());
+    msg += String(",ut:") + String (int(uptime()));
     if (tx_rtt > 0)
         msg += String(",rtt:") + String(tx_rtt);
     msg += String(",rc:") + String(rc);
@@ -160,7 +157,20 @@ void send_update(uint8_t dest)
 
 void set_gate_position(int pos, int dest)
 {
-    send_msg(dest, String("gp:") + String(gate_position));
+    Serial.println(runtime() + String("start ") + String(tb67.error()));
+    tb67.run(-5);
+    Serial.println(runtime() + String("run -5 ") + String(tb67.error()));
+    delay(1000);
+    tb67.stop();
+    Serial.println(runtime() + String("stop ") + String(tb67.error()));
+    delay(1000);
+    tb67.run(5);
+    Serial.println(runtime() + String("run 5 ") + String(tb67.error()));
+    delay(1000);
+    tb67.coast();
+    Serial.println(runtime() + String("coast ") + String(tb67.error()));
+    tb67.clear_error();
+    Serial.println(runtime() + String("clear_error ") + String(tb67.error()));
 }
 
 
@@ -192,24 +202,8 @@ void loop()
     }
 
 
-    static unsigned long last_motor_update = 0;
-    const long motor_update_rate = tb67.get_pwm_period() * 30;
-    if (if_dt(last_motor_update, motor_update_rate))
-    {
-        static int delta=5;
-        static int dir = 1;
-        int pwm = tb67.get_pwm_duty();
-        if (pwm <= 0)
-            dir = 1;
-        else if (pwm >= 100)
-            dir = -1;
-        tb67.set_pwm_duty(pwm + delta*dir);
-        Serial.print(runtime() + " pwm_duty:"); Serial.println(tb67.get_pwm_duty());
-    }
-
-
     static unsigned long last_update = 0;
-    if (if_dt(last_update, 5000))
+    if (if_dt(last_update, 30000))
     {
         send_update(0);
     }

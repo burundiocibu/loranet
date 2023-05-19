@@ -14,12 +14,9 @@ This is a prototyping board with DIN mounting brackets. On this board are the fo
 
 * Adafruit LoRa feather module with an ATMega32u4 and RFM9x LoRa radio https://www.adafruit.com/product/3078
 * Generic RS232-TTL level converter to talk to the renology charge contoller 
-* Pololu brushed dc motor driver https://www.pololu.com/product/2999/resources
-   * TB67H420 motor driver: https://toshiba.semicon-storage.com/info/TB67H420FTG_datasheet_en_20201016.pdf?did=59110&prodName=TB67H420FTG
-   * HBMODE is strapped hight to run both  channels in parallel
-   * all input is on PWMA, INA1, and INA2. PWMB, INB1, and INB2 are ignored
-   * Connect to feather: PWMA, INA1, INA2, LO1, LO2
-
+* Cytron brushed dc motor driver https://makermotor.com/pn00218-cyt2-cytron-13a-dc-motor-driver-md10c/
+   https://makermotor.com/content/cytron/pn00218-cyt2/MD10C%20Rev2.0%20User%27s%20Manual.pdf
+   
 ### Modules
 
 #### Feather 32u4 with RFM9x
@@ -29,88 +26,91 @@ Pin numbers are arduino pin numbers or silkscreen
 
 #### Mainboard
 
-Numbers are columns, 74 is far right
-
-Letters are rows, A row with connector blocks
-
 Feather numbers are silkscreen
 
-| PWB  | Feather | Connections
-|------|---------|------------
-| C59  | 2/SDA   | Encoder signal, w 5 k pullup to +5 * "filter", PWB B70
-| C60  | 3/SCL   | TB67H420 LO2, PWB B58
-| C61  | 5       | TB67H420 PWMA, TIMER3A, PWB B53
-| C62  | 6/A7    | TB67H420 LO1, PWB B57
-| C63  | 9/A9    | Feather Vbat via 1:1 divider
-| C64  | 10/A10  | TB67H420 INA1, PWB B51
-| C65  | 11      | TB67H420 INA2, PWB B52
-| C66  | 12/A11  | System Vload, via 33k:10k divider, PWB B66
-| C67  | 13      | Feather LED
-| C68  | Vbus    | 5VDC buss
-| C69  | EN      |
-| C70  | Vbat    | Feather vbat
-|------|---------|-------------
-| D59  | DIO1    | 
-| D60  | 1/TxD1  | TTL-RxD
-| D61  | 0/RxD1  | TTL-TxD, PWB C26
-| D62  | MISO    | RMF9x SPI
-| D63  | MOSI    | RMF9x SPI
-| D64  | SCK     | RMF9x SPI
-| D65  | A5      |
-| D66  | A4      |
-| D67  | A3      | Driveway remote sensor in
-| D68  | A2      | Wireless remote receiver in, PWB A55
-| D69  | A1      | To Relay in, Relay D1, for gate lock, PWB C53
-| D70  | A0      | Encoder signal, PWB C59
-| D71  | GND     | Gnd, PWB B2
-| D72  | AREF    |
-| D73  | 3.3V    | 
-| D74  | RST     |
+| Feather | Connections
+|---------|------------
+| 2/SDA   | Encoder signal, w 5 k pullup to +5 * "filter", e15+e13
+| 3/SCL   | 
+| 5       | MD10C_PWM, TIMER3A, e17
+| 6/A7    | 
+| 9/A9    | Feather Vbat via 1:1 divider
+| 10/A10  | MD10C_DIR, e20
+| 11      | 
+| 12/A11  | System Vload, via 33k:10k divider, e22
+| 13      | Feather LED
+| Vbus    | 5VDC buss
+| EN      |
+| Vbat    | Feather vbat
+|---------|-------------
+| DIO1    | 
+| TxD1    | TTL-RxD f15 
+| RxD1    | TTL-TxD f16
+| MISO    | RMF9x SPI
+| MOSI    | RMF9x SPI
+| SCK     | RMF9x SPI
+| A5      |
+| A4      |
+| A3      | Driveway remote sensor in
+| A2      | Wireless remote receiver in
+| A1      | To Relay in, Relay D1, for gate lock
+| A0      | Encoder signal
+| GND     | Gnd
+| AREF    |
+| 3.3V    | 
+| RST     |
 
-| PWB  | Relay   | Connections
-|------|---------|------------
-| C48  | 5V      | 5VDC buss
-| C49  | Gnd     | Gnd
-| C53  | D1      | Feather A1, PWB D69
-|      | NO      | Act Yel, PWB A63
-|      | COM     | Vload buss
+| Relay   | Connections
+|---------|------------
+| 5V      | 5VDC buss
+| Gnd     | Gnd
+| D1      | Feather A1, PWB D69
+| NO      | Act Yel, PWB A63
+| COM     | Vload buss
 
-| PWB  | TB67H420| Connections
-|------|---------|------------
-| B48  | VM      | 
-| B49  | Gnd     | Gnd
-| B50  | Vcc     | 
-| B51  | INA1    | Feather 10, PWB C64
-| B52  | INA2    | Feather 11, PWB C65
-| B53  | PWMA    | Feather 3, PWB C60
-| B54  | INB1    | 
-| B55  | INB2    | 
-| B56  | PWMB    | 
-| B57  | LO1     | Feather 6, PWB C62
-| B58  | LO2     | Feather 5, PWB C61
-| B59  | VrefA   |
-|      | A+      | Act Red, PWB A65
-|      | A-      | Act Blk, PWB A63
-|      | Vin     | Vload buss
-|      | Gnd     | Gnd buss
+| MD10C   | Connections
+|---------|------------
+| PWR+    | 
+| PWR-    | Gnd
+| A       | Act Red, PWB A65
+| B       | Act Blk, PWB A63
+| PWM     | Feather 5
+| DIR     | Feather 10
+| Gnd     | Feather Gnd
 
-| PWB  | TTL     | Connections
-|------|---------|------------
-| C26  | RxD     | Feather 1, PWB D60
-| C27  | TxD     | Feather 0, PWB D61
-| C28  | Gnd     | Gnd
-| C29  | Vcc     | 5VDC buss
+| TTL     | Connection
+|---------|------------
+| RxD     | Feather TxD, e1
+| TxD     | Feather RxD, e2
+| Gnd     | Gnd, a3
+| Vcc     | 5VDC,a4
 
-| PWB  | Terminals | Connections
-|------|-----------|------------
-| A74  | 12VDC     | Charge controller Vload +, PWB 12VDC buss
-| A72  | Gnd       | Charge controller Vload -, PWB Gnd buss, B2, B3
-| A70  | Act Wht   | Encoder signal, PWB B70, Acutator white
-| A67  | Act Grn   | Encoder ground
-| A65  | Act Red   | Motor +, TB67H420 A+, Actuator Red
-| A63  | Act Blk   | Motor -, TB67H420 A-, Actuator Black
-| A60  | Act Blu   | Lock -, Gnd
-| A58  | Act Yel   | Lock +, Relay NO
-| A55  | Rcvr      | Remote receiver signal, Feather A2, PWB D68
-| A53  | Rcvr Gnd  | Remote receiver Gnd, Gnd, Gnd buss
+
+| Terminals | Connections
+|-----------|------------
+| 12VDC     | Charge controller Vload +, PWB 12VDC buss
+| Gnd       | Charge controller Vload -, PWB Gnd buss, B2, B3
+| Act Wht   | Encoder signal, PWB B70, Acutator white
+| Act Grn   | Encoder ground
+| Act Red   | Motor +, TB67H420 A+, Actuator Red
+| Act Blk   | Motor -, TB67H420 A-, Actuator Black
+| Act Blu   | Lock -, Gnd
+| Act Yel   | Lock +, Relay NO
+| Rcvr      | Remote receiver signal, Feather A2, PWB D68
+| Rcvr Gnd  | Remote receiver Gnd, Gnd, Gnd buss
+
+#### Remote recevier
+Mighty Mule AQ201-NB
+Takes +5 to drive
+uses a Hope RF CMT2210LH OOK receiver
+
+#### Gate actuator
+Actuator is a MM371W, made by MightyMule.
+Linear actuator has a 12VDC brushed motor. Motor has an inrush current of 16A and a no-load current of 1.6A.
+Motor has what appears to be a hall effect sensor board that outputs three levels.
+2 V when limit switch is triggered
+toggles between 3 and 4.2V when motor is running
+pulses are about 3 ms apart when motor is at full speed. closer starting/stopping
+pulses are about 9.2 ms wide when motor is running at full speed.
+With a 1k pullup, pulses are 1.84 to 2.76V
 
