@@ -9,10 +9,10 @@
 class MD10C
 {
     public:
-        MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint16_t encoder_pin);
+        MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t encoder_pin);
         void run(int speed);
         void stop() { run(0); };
-        int get_speed() { return digitalRead(dir) ? -pwm_duty: pwm_duty; }
+        int get_speed() { return digitalRead(direction_pin) ? -pwm_duty: pwm_duty; }
         void set_pwm_duty(int _pwm_duty);
         int get_pwm_duty() {return pwm_duty;};
         int get_pwm_freq() {return pwm_freq;};
