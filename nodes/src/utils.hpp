@@ -1,5 +1,4 @@
-// utils.hpp
-
+// -*- coding: utf-8 -*-
 #include <Arduino.h>
 
 
@@ -37,21 +36,4 @@ long dt(unsigned long start_time)
     if (dt < 0)
         dt += 0x10000;
     return dt;
-}
-
-
-bool if_dt(unsigned long& start_time, unsigned long update_rate)
-{
-    if (start_time == 0)
-    {
-        start_time = millis();
-        return true;
-    }
-
-    if (dt(start_time) > update_rate)
-    {
-        start_time += update_rate;
-        return true;
-    }
-    return false;
 }

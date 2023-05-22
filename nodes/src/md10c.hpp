@@ -1,5 +1,4 @@
 // -*- coding: utf-8 -*-
-
 #include <Arduino.h>
 
 // MD10C motor driver from cytron
@@ -9,18 +8,18 @@
 class MD10C
 {
     public:
-        MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t encoder_pin);
+        MD10C(uint8_t pwm_pin, uint8_t direction_pin);
+        MD10C() {};
         void run(int speed);
         void stop() { run(0); };
-        int get_speed() { return digitalRead(direction_pin) ? -pwm_duty: pwm_duty; }
-        void set_pwm_duty(int _pwm_duty);
-        int get_pwm_duty() {return pwm_duty;};
-        int get_pwm_freq() {return pwm_freq;};
+        int get_speed();
+        int get_dir();
 
     private:
-        uint8_t pwm_pin, direction_pin, encoder_pin; // pins used to talk to the driver
+        uint8_t pwm_pin, direction_pin; // pins used to talk to the driver
         int pwm_top;  // max count of OC reg
-        int pwm_duty; // duty cycle in percent
         int pwm_freq; // frequency of pwm, in Hz
-
+        int motor_speed; // -100..100
+        int previous_speed;
+        void set_pwm_duty(int _pwm_duty);
 };

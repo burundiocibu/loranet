@@ -6,7 +6,8 @@
 #include <RH_RF95.h>
 
 #include "renogyrover.hpp"
-#include "md10c.hpp"
+#include "PeriodicTimer.hpp"
+#include "LinearActuator.hpp"
 #include "utils.hpp"
 
 // for feather32u4
@@ -24,19 +25,14 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 #define FEATHER_VBAT 9  // connected to feather Vbatt through a 1/2 divider network
 
 #define GATE_LOCK 21 // GPIO output to relay
-
+#define DRIVEWAY_RECEIVER A3
+#define REMOTE_RECEIVER A2
 #define ROVER_VLOAD A11 // (w divider)
 
 #define MD10C_PWM 5
 #define MD10C_DIR 10
-MD10C motor(MD10C_PWM, MD10C_DIR);
 
 
-// A pulsecounting encoder on the linear motor
-// one is for an analog read and the other is to generate interrupts
-// They are both the same signal coming from the encoder.
-#define PULSE_V A0
-#define PULSE_I 2
 
 // 5 to 23 dB on this device
 int txpwr = 20;
@@ -60,6 +56,9 @@ void setup()
 
     pinMode(GATE_LOCK, OUTPUT);
     digitalWrite(GATE_LOCK, LOW);
+
+    pinMode(DRIVEWAY_RECEIVER, INPUT);
+    pinMode(REMOTE_RECEIVER, INPUT_PULLUP);
 
     if (!manager.init())
         Serial.println("manager init failed");
@@ -118,9 +117,6 @@ void send_update(uint8_t dest)
     // LiFePo4 battery managed by the renogy mgr
     float gate_vbat = analogRead(ROVER_VLOAD) * 4.29 * 3.3/1024;
 
-    float bv = rover.battery_voltage();
-    int rc = bv<100;
-
     String msg;
     msg += String("gp:") + String(gate_position);
     msg += String(",gvb:") + String(gate_vbat);
@@ -129,48 +125,48 @@ void send_update(uint8_t dest)
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
     msg += String(",ut:") + String (int(uptime()));
+    msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
+    msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
     if (tx_rtt > 0)
         msg += String(",rtt:") + String(tx_rtt);
+    int rc = rover.battery_voltage() < 100;
     msg += String(",rc:") + String(rc);
     send_msg(dest, msg);
+}
 
-    if (rc)
-    {
-        msg = String("bv:") + String(bv);
-        msg += String(",bc:") + String(rover.battery_current());
-        msg += String(",bp:") + String(rover.battery_percentage());
-        msg += String(",ct:") + String(rover.controller_temperature());
-        msg += String(",lv:") + String(rover.load_voltage());
-        msg += String(",lc:") + String(rover.load_current());
-        msg += String(",lp:") + String(rover.load_power());
-        msg += String(",lo:") + String(rover.load_on());
-        msg += String(",sv:") + String(rover.solar_voltage());
-        msg += String(",sc:") + String(rover.solar_current());
-        msg += String(",cp:") + String(rover.charging_power());
-        msg += String(",cs:") + String(rover.charging_state());
-        msg += String(",cf:") + String(rover.controller_fault(), HEX);
-        msg += String(",dl:") + String(rover.discharging_limit_voltage());
-        send_msg(dest, msg);
-    }
+void send_position_update(uint8_t dest)
+{
+    String msg;
+    msg += String("gp:") + String(gate_position);
+    msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
+    msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
+    send_msg(dest, msg);
+}
+
+void send_rover_update(uint8_t dest)
+{
+    float bv = rover.battery_voltage();
+    if (bv > 100)
+        return;
+
+    String msg;
+    msg = String("bv:") + String(bv);
+    msg += String(",bc:") + String(rover.battery_current());
+    msg += String(",bp:") + String(rover.battery_percentage());
+    msg += String(",ct:") + String(rover.controller_temperature());
+    msg += String(",lp:") + String(rover.load_power());
+    msg += String(",lo:") + String(rover.load_on());
+    msg += String(",cp:") + String(rover.charging_power());
+    msg += String(",cs:") + String(rover.charging_state());
+    msg += String(",cf:") + String(rover.controller_fault(), HEX);
+    msg += String(",dl:") + String(rover.discharging_limit_voltage());
+    send_msg(dest, msg);
 }
 
 
 void set_gate_position(int pos, int dest)
 {
-    Serial.println(runtime() + String("start ") + String(tb67.error()));
-    tb67.run(-5);
-    Serial.println(runtime() + String("run -5 ") + String(tb67.error()));
-    delay(1000);
-    tb67.stop();
-    Serial.println(runtime() + String("stop ") + String(tb67.error()));
-    delay(1000);
-    tb67.run(5);
-    Serial.println(runtime() + String("run 5 ") + String(tb67.error()));
-    delay(1000);
-    tb67.coast();
-    Serial.println(runtime() + String("coast ") + String(tb67.error()));
-    tb67.clear_error();
-    Serial.println(runtime() + String("clear_error ") + String(tb67.error()));
+    Serial.println(runtime());
 }
 
 
@@ -201,11 +197,16 @@ void loop()
         else if (msg=="R0")  set_rover_load(0, from);
     }
 
+    bool open_gate = digitalRead(DRIVEWAY_RECEIVER) | !digitalRead(REMOTE_RECEIVER);
+    if (open_gate)
+        send_position_update(0);
 
-    static unsigned long last_update = 0;
-    if (if_dt(last_update, 30000))
-    {
+    static PeriodicTimer update_timer(30000);
+    if (update_timer.time())
         send_update(0);
-    }
+
+    static PeriodicTimer rover_update_timer(60000);
+    if (rover_update_timer.time())
+        send_rover_update(0);
 }
 

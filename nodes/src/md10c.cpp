@@ -1,18 +1,17 @@
 // -*- coding: utf-8 -*-
-
 #include "md10c.hpp"
+
 
 /// @brief MD10C constructor
 /// @param pwm pin for pwm
 /// @param dir pin for drive direction
-MD10C::MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t encoder_pin):
-    pwm_pin(pwm_pin), direction_pin(direction_pin), encoder_pin(encoder_pin)
+MD10C::MD10C(uint8_t pwm_pin, uint8_t direction_pin):
+    pwm_pin(pwm_pin), direction_pin(direction_pin)
 {
     pinMode(pwm_pin, OUTPUT);
     digitalWrite(pwm_pin, LOW);
     pinMode(direction_pin, OUTPUT);
     digitalWrite(direction_pin, LOW);
-    pinMode(encoder_pin, INPUT);
     
     // PWM is being generated on Feather pin 5 
     // 32u4 pin 31, port C6, OC.3A
@@ -31,16 +30,31 @@ MD10C::MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t encoder_pin):
 
     pwm_top = 0xff;
     pwm_freq = 15600; // Hz
-    set_pwm_duty(0);
+    run(0);
+}
+
+
+int MD10C::get_speed()
+{
+    return motor_speed;
+}
+
+
+int MD10C::get_dir()
+{
+    if (motor_speed)
+        return motor_speed;
+    else
+        return previous_speed;
 }
 
 
 void MD10C::set_pwm_duty(int _pwm_duty)
 {
-    pwm_duty = min(100, _pwm_duty);
+    uint8_t pwm_duty = min(100, _pwm_duty);
     // Set the duty cycle
     OCR3A = uint16_t((pwm_duty/100.0) * pwm_top);
-    // Start prescaler to /1, about 3.9 kHz to start the timer
+    // Start prescaler to /1
     TCCR3B = _BV(CS30);
 }
 
@@ -59,6 +73,8 @@ void MD10C::run(int speed)
     }
     else
     {
+        previous_speed = speed;
         set_pwm_duty(0);
     }
+    motor_speed = speed;
 }

@@ -16,7 +16,12 @@ This is a prototyping board with DIN mounting brackets. On this board are the fo
 * Generic RS232-TTL level converter to talk to the renology charge contoller 
 * Cytron brushed dc motor driver https://makermotor.com/pn00218-cyt2-cytron-13a-dc-motor-driver-md10c/
    https://makermotor.com/content/cytron/pn00218-cyt2/MD10C%20Rev2.0%20User%27s%20Manual.pdf
-   
+* dual comparitor to generate interrupts from the encoder line
+* Keystone Heddolf  P294-KB Universal Receiver
+   https://www.keystoneheddolf.com/our-products
+* Chtoocy Wireless Driverway alarm.
+   https://manuals.plus/chtoocy/ch-mr2022-solar-wireless-driveway-alarm-manual#axzz82ODpOYUY
+
 ### Modules
 
 #### Feather 32u4 with RFM9x
@@ -30,7 +35,7 @@ Feather numbers are silkscreen
 
 | Feather | Connections
 |---------|------------
-| 2/SDA   | Encoder signal, w 5 k pullup to +5 * "filter", e15+e13
+| 2/SDA   | Encoder signal, w 5 k pullup to +5 * "filter", e15+e13+f26
 | 3/SCL   | 
 | 5       | MD10C_PWM, TIMER3A, e17
 | 6/A7    | 
@@ -51,10 +56,10 @@ Feather numbers are silkscreen
 | SCK     | RMF9x SPI
 | A5      |
 | A4      |
-| A3      | Driveway remote sensor in
-| A2      | Wireless remote receiver in
-| A1      | To Relay in, Relay D1, for gate lock
-| A0      | Encoder signal
+| A3      | Driveway remote sensor in, e23
+| A2      | from Heddolf Receiver output, e24
+| A1      | To Relay IN, for gate lock, e25
+| A0      | Encoder signal, f26
 | GND     | Gnd
 | AREF    |
 | 3.3V    | 

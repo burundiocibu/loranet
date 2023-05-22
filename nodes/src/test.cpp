@@ -1,11 +1,13 @@
 // -*- coding: utf-8 -*-
-
-#include "md10c.hpp"
+#include "PeriodicTimer.hpp"
+#include "LinearActuator.hpp"
 #include "utils.hpp"
 
-#define MD10C_PWM 5
-#define MD10C_DIR 10
-MD10C motor(MD10C_PWM, MD10C_DIR);
+#define MD10C_PWM_PIN 5
+#define MD10C_DIR_PIN 10
+
+#define ENCODER_PIN A0  // Must be on an external interrupt.
+#define ENCODER_LIMIT_PIN A0
 
 
 void setup()
@@ -14,26 +16,19 @@ void setup()
     Serial.begin(115200);
     while (!Serial) delay(10);
     Serial.println("Node test");
-    motor.run(10);
 }
 
 
 void loop()
 {
-    static unsigned long last_motor_update = 0;
-    const long motor_update_rate = 2000;
-    if (if_dt(last_motor_update, motor_update_rate))
-    {
-        static int speed=100;
-        speed = -speed;
-        motor.run(speed);
-        Serial.print(runtime() + " speed:");  Serial.println(motor.get_speed());
-    }
+    static MD10C motor(MD10C_PWM_PIN, MD10C_DIR_PIN);
+    static LinearActuator gate(ENCODER_PIN, ENCODER_LIMIT_PIN, &motor);
 
-    static unsigned long last_update = 0;
-    if (if_dt(last_update, 5000))
-    {
-        Serial.print(runtime() + " millis:"); Serial.println(millis());
-    }
+    if (gate.get_speed())
+        gate.encoder_isr();
+
+    static PeriodicTimer update_timer(1000);
+    if (update_timer.time())
+        Serial.println(runtime() + gate.get_status());
 }
 
