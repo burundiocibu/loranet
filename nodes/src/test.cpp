@@ -6,7 +6,7 @@
 #define MD10C_PWM_PIN 5
 #define MD10C_DIR_PIN 10
 
-#define ENCODER_PIN A0  // Must be on an external interrupt.
+#define ENCODER_PIN 2  // Must be on an external interrupt.
 #define ENCODER_LIMIT_PIN A0
 
 
@@ -23,9 +23,6 @@ void loop()
 {
     static MD10C motor(MD10C_PWM_PIN, MD10C_DIR_PIN);
     static LinearActuator gate(ENCODER_PIN, ENCODER_LIMIT_PIN, &motor);
-
-    if (gate.get_speed())
-        gate.encoder_isr();
 
     static PeriodicTimer update_timer(1000);
     if (update_timer.time())

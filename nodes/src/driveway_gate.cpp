@@ -29,9 +29,11 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 #define REMOTE_RECEIVER A2
 #define ROVER_VLOAD A11 // (w divider)
 
-#define MD10C_PWM 5
-#define MD10C_DIR 10
+#define MD10C_PWM_PIN 5
+#define MD10C_DIR_PIN 10
 
+#define ENCODER_PIN 2  // Must be on an external interrupt pin
+#define ENCODER_LIMIT_PIN 11 // Must be on a pcint
 
 
 // 5 to 23 dB on this device
@@ -164,12 +166,6 @@ void send_rover_update(uint8_t dest)
 }
 
 
-void set_gate_position(int pos, int dest)
-{
-    Serial.println(runtime());
-}
-
-
 void set_rover_load(int load, int dest)
 {
     rover_load_enable = load;
@@ -179,8 +175,12 @@ void set_rover_load(int load, int dest)
 
 
 
+
 void loop()
 {
+    static MD10C motor(MD10C_PWM_PIN, MD10C_DIR_PIN);
+    static LinearActuator gate(ENCODER_PIN, ENCODER_LIMIT_PIN, &motor);
+
     uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(rf95_buf);
     uint8_t from;
@@ -191,11 +191,15 @@ void loop()
         String msg((char*)rf95_buf);
         Serial.println(runtime() + " Rx: " + msg);
 
-        if (msg=="GO")       set_gate_position(100, from);
-        else if (msg=="GC")  set_gate_position(0, from);
+        if (msg=="GO")       gate.goto_position(10000);
+        else if (msg=="GC")  gate.goto_position(0);
         else if (msg=="R1")  set_rover_load(1, from);
         else if (msg=="R0")  set_rover_load(0, from);
     }
+
+    static PeriodicTimer gate_timer(1000);
+    if (gate_timer.time() || gate.get_speed())
+        Serial.println(runtime() + gate.get_status());
 
     bool open_gate = digitalRead(DRIVEWAY_RECEIVER) | !digitalRead(REMOTE_RECEIVER);
     if (open_gate)

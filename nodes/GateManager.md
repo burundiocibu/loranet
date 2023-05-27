@@ -35,13 +35,13 @@ Feather numbers are silkscreen
 
 | Feather | Connections
 |---------|------------
-| 2/SDA   | Encoder signal, w 5 k pullup to +5 * "filter", e15+e13+f26
-| 3/SCL   | 
+| 2/SDA   | Encoder pulse signal, e15
+| 3/SCL   | This appears to be used by the RadioHead drivers
 | 5       | MD10C_PWM, TIMER3A, e17
 | 6/A7    | 
 | 9/A9    | Feather Vbat via 1:1 divider
 | 10/A10  | MD10C_DIR, e20
-| 11      | 
+| 11      | Encoder limit signal, PCINT7 PB7, e21
 | 12/A11  | System Vload, via 33k:10k divider, e22
 | 13      | Feather LED
 | Vbus    | 5VDC buss
@@ -59,7 +59,7 @@ Feather numbers are silkscreen
 | A3      | Driveway remote sensor in, e23
 | A2      | from Heddolf Receiver output, e24
 | A1      | To Relay IN, for gate lock, e25
-| A0      | Encoder signal, f26
+| A0      | 
 | GND     | Gnd
 | AREF    |
 | 3.3V    | 
@@ -119,3 +119,9 @@ pulses are about 3 ms apart when motor is at full speed. closer starting/stoppin
 pulses are about 9.2 ms wide when motor is running at full speed.
 With a 1k pullup, pulses are 1.84 to 2.76V
 
+#### Encoder conditioning
+Encoder1 is w 1 k pullup to +5 & 50nF cap to ground through comparitor set to 2V, e15
+Encoder2 is above through a comparitor set to .8V
+
+Encoder 1 is pulsed high with shaft rotation
+Encoder 2 is pulsed high when limit switch is hit

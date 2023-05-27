@@ -64,12 +64,12 @@ void MD10C::run(int speed)
     if (speed > 0)
     {
         set_pwm_duty(speed);
-        digitalWrite(direction_pin, LOW);
+        digitalWrite(direction_pin, HIGH);
     }
     else if (speed < 0)
     {
         set_pwm_duty(-speed);
-        digitalWrite(direction_pin, HIGH);
+        digitalWrite(direction_pin, LOW);
     }
     else
     {
