@@ -18,7 +18,7 @@
 class RenogyRover
 {
     public:
-        RenogyRover(Stream &serial, uint8_t load);
+        RenogyRover(Stream &serial, uint8_t load=1);
 
         float battery_percentage() {return read_register(0x0100); };
         float battery_voltage() {return 0.1  * read_register(0x0101); };  // Volts

@@ -5,36 +5,7 @@
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 
-#include "renogyrover.hpp"
-#include "PeriodicTimer.hpp"
-#include "LinearActuator.hpp"
-#include "utils.hpp"
-
-// for feather32u4
-#define RFM95_RST 4
-#define RFM95_INT 7 // This is from the pinout image, not the text
-#define RFM95_CS 8
-#define RF95_FREQ 915.0
-
-// Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
-
-#define NODE_ADDRESS 2
-RHReliableDatagram manager(rf95, NODE_ADDRESS);
-
-#define FEATHER_VBAT 9  // connected to feather Vbatt through a 1/2 divider network
-
-#define GATE_LOCK 21 // GPIO output to relay
-#define DRIVEWAY_RECEIVER A3
-#define REMOTE_RECEIVER A2
-#define ROVER_VLOAD A11 // (w divider)
-
-#define MD10C_PWM_PIN 5
-#define MD10C_DIR_PIN 10
-
-#define ENCODER_PIN 2  // Must be on an external interrupt pin
-#define ENCODER_LIMIT_PIN 11 // Must be on a pcint
-
+#include "driveway_gate.hpp"
 
 // 5 to 23 dB on this device
 int txpwr = 20;

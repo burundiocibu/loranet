@@ -12,7 +12,14 @@ black, is rover +12V
 ### Main proto board overview
 This is a prototyping board with DIN mounting brackets. On this board are the following
 
-* Adafruit LoRa feather module with an ATMega32u4 and RFM9x LoRa radio https://www.adafruit.com/product/3078
+* Heltec ESP32 LoRa module V3
+   * https://heltec.org/project/wifi-lora-32-v3/
+   * datasheet: https://resource.heltec.cn/search/
+   * SX1262 LoRa radio 
+   * 0.96 128x64 OLED display, On I2C bus, U6, 
+   * CP2102 USB to serial
+   * schematics: https://resource.heltec.cn/download/WiFi_LoRa32_V3/HTIT-WB32LA(F)_V3_Schematic_Diagram.pdf
+   * docs: https://docs.heltec.org/en/node/esp32/index.html
 * Generic RS232-TTL level converter to talk to the renology charge contoller 
 * Cytron brushed dc motor driver https://makermotor.com/pn00218-cyt2-cytron-13a-dc-motor-driver-md10c/
    https://makermotor.com/content/cytron/pn00218-cyt2/MD10C%20Rev2.0%20User%27s%20Manual.pdf
@@ -24,71 +31,103 @@ This is a prototyping board with DIN mounting brackets. On this board are the fo
 
 ### Modules
 
-#### Feather 32u4 with RFM9x
-ATmega32u4 @ 8 MHz, 32k flash, 2k ram
+#### Heltec ESP32 LoRa moduel
+ESP32-S3FN8, 32bit LX7, 240 MHz, 8MB flash, 320KB ram
+https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/index.html
 
 Pin numbers are arduino pin numbers or silkscreen
 
-#### Mainboard
+Some libs to investigated:
+* Heltec ESP32 Dev-Boards
+* Heltec_esp32_display
+* oled ssd1306
+* gxepd
+* RadioLib
 
-Feather numbers are silkscreen
+#### Protoboard
 
-| Feather | Connections
-|---------|------------
-| 2/SDA   | Encoder pulse signal, e15
-| 3/SCL   | This appears to be used by the RadioHead drivers
-| 5       | MD10C_PWM, TIMER3A, e17
-| 6/A7    | 
-| 9/A9    | Feather Vbat via 1:1 divider
-| 10/A10  | MD10C_DIR, e20
-| 11      | Encoder limit signal, PCINT7 PB7, e21
-| 12/A11  | System Vload, via 33k:10k divider, e22
-| 13      | Feather LED
-| Vbus    | 5VDC buss
-| EN      |
-| Vbat    | Feather vbat
-|---------|-------------
-| DIO1    | 
-| TxD1    | TTL-RxD f15 
-| RxD1    | TTL-TxD f16
-| MISO    | RMF9x SPI
-| MOSI    | RMF9x SPI
-| SCK     | RMF9x SPI
-| A5      |
-| A4      |
-| A3      | Driveway remote sensor in, e23
-| A2      | from Heddolf Receiver output, e24
-| A1      | To Relay IN, for gate lock, e25
-| A0      | 
-| GND     | Gnd
-| AREF    |
-| 3.3V    | 
-| RST     |
+bb  | pin   | fcn    |
+----|-----  | ----   |
+f1  | J3.1  | gnd    |
+f2  | J3.2  | 3v3    |
+f3  | J3.3  | 3v3    |
+f4  | J3.4  | gpio37 | ADC_Ctrl w pullup
+f5  | J3.5  | gpio46 | Input, Internal pullup enabled, ENCODER_PULSE
+f6  | J3.6  | gpio45 | Input, Internal pullup enabled, ENCODER_LIMIT
+f7  | J3.7  | gpio42 | Output, MD10C_PWM
+f8  | J3.8  | gpio41 | Output, MD10C_DIR
+f9  | J3.9  | gpio40 | 
+f10 | J3.10 | gpio39 | Input, DRIVEWAY_RECEIVER, Internal pullup enabled
+f11 | J3.11 | gpio38 | Input, REMOTE_RECEIVER, with voltage div, CHECK!!!!
+f12 | J3.12 | gpio1  | VBAT_read 
+f13 | J3.13 | gpio2  | Output, RELAY1_IN
+f14 | J3.14 | gpio3  |
+f15 | J3.15 | gpio4  |
+f16 | J3.16 | gpio5  |
+f17 | J3.17 | gpio6  |
+f18 | J3.18 | gpio7  |
+
+---
+
+bb  | pin   | fcn    | 
+----|-----  | ----   | 
+e1  | J2.1  | gnd    |
+e2  | J2.2  | 5v     |
+e3  | J2.3  | Ve     |
+e4  | J2.4  | Ve     |
+e5  | J2.5  | U0RxD  | CP2102.RxD
+e6  | J2.6  | UoTxD  | CP2102.TxD
+e7  | J2.7  | rst    | RST_SW
+e8  | J2.8  | gpio0  | USER_SW
+e9  | J2.9  | gpio36 | Vext_Ctrl w pullup
+e10 | J2.10 | gpio35 | LED_Write
+e11 | J2.11 | gpio34 | TTL-RxD
+e12 | J2.12 | gpio33 | TTL-TxD
+e13 | J2.13 | gpio47 |
+e14 | J2.14 | gpio48 |
+e15 | J2.15 | gpio26 |
+e16 | J2.16 | gpio21 | OLED_RST
+e17 | J2.17 | gpio20 |
+e18 | J2.18 | gpio19 |
+
+Internal Connections
+esp32  | fcn
+-----  | ---
+GPIO8  | LoRa_NSS
+GPIO9  | LoRa_SCK
+GPIO10 | LoRa_MOSI
+GPIO11 | LoRa_MISO
+GPIO12 | LoRa_RST
+GPIO13 | LoRa_BUSY
+GPIO17 | OLED_SDA
+GPIO18 | OLED_SCL
+
+
 
 | Relay   | Connections
 |---------|------------
-| 5V      | 5VDC buss
+| 5V      | 5VDC
 | Gnd     | Gnd
-| D1      | Feather A1, PWB D69
-| NO      | Act Yel, PWB A63
-| COM     | Vload buss
+| D1      | ESP32 gpio2, RELAY1_IN
+| NO      | Act Yel
+| COM     | VLOAD
 
 | MD10C   | Connections
 |---------|------------
-| PWR+    | 
+| PWR+    | VLOAD
 | PWR-    | Gnd
-| A       | Act Red, PWB A65
-| B       | Act Blk, PWB A63
-| PWM     | Feather 5
-| DIR     | Feather 10
-| Gnd     | Feather Gnd
+| A       | Act Red
+| B       | Act Blk
+| PWM     | ESP32 
+| DIR     | ESP32
+| Gnd     | Gnd
 
 | TTL     | Connection
 |---------|------------
-| RxD     | Feather TxD, e1
-| TxD     | Feather RxD, e2
-| Gnd     | Gnd, a3
-| Vcc     | 5VDC,a4
+| RxD     | ESP32
+| TxD     | ESP32
+| Gnd     | Gnd
+| Vcc     | 5VDC
 
 
 | Terminals | Connections
@@ -120,8 +159,8 @@ pulses are about 9.2 ms wide when motor is running at full speed.
 With a 1k pullup, pulses are 1.84 to 2.76V
 
 #### Encoder conditioning
-Encoder1 is w 1 k pullup to +5 & 50nF cap to ground through comparitor set to 2V, e15
+EncoderIN is w 1 k pullup to +5 & 50nF cap to ground through comparitor set to 2V, e15
 Encoder2 is above through a comparitor set to .8V
 
-Encoder 1 is pulsed high with shaft rotation
-Encoder 2 is pulsed high when limit switch is hit
+ENCODER_PULSE is pulsed high with shaft rotation, 9ms pulses at "full" speed
+ENCODER_LIMIT is set high when limit switch is hit

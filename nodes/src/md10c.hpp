@@ -8,18 +8,19 @@
 class MD10C
 {
     public:
-        MD10C(uint8_t pwm_pin, uint8_t direction_pin);
+        MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t pwm_channel);
         MD10C() {};
-        void run(int speed);
-        void stop() { run(0); };
-        int get_speed();
-        int get_dir();
+        void run(int speed) { set_direction(speed); set_speed(abs(speed)); };
+        void stop() { set_speed(0); };
+        void set_speed(int speed);
+        int get_speed() { return speed; };
+        void set_direction(int dir);
+        int get_direction() { return direction; }
 
     private:
         uint8_t pwm_pin, direction_pin; // pins used to talk to the driver
-        int pwm_top;  // max count of OC reg
+        uint8_t pwm_channel;
         int pwm_freq; // frequency of pwm, in Hz
-        int motor_speed; // -100..100
-        int previous_speed;
-        void set_pwm_duty(int _pwm_duty);
+        int speed; // -255..255
+        int direction;
 };
