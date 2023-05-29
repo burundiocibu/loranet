@@ -8,7 +8,7 @@
 MD10C::MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t pwm_channel):
     pwm_pin(pwm_pin), direction_pin(direction_pin), pwm_channel(pwm_channel)
 {
-    pwm_freq = 20000; // Hz
+    pwm_freq = 10000; // Hz
     ledcSetup(pwm_channel, pwm_freq, 8);
     ledcAttachPin(pwm_pin, pwm_channel);
     pinMode(direction_pin, OUTPUT);

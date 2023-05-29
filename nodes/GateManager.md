@@ -45,30 +45,30 @@ Some libs to investigated:
 * RadioLib
 
 #### Protoboard
-
+Right
 bb  | pin   | fcn    |
 ----|-----  | ----   |
 f1  | J3.1  | gnd    |
 f2  | J3.2  | 3v3    |
 f3  | J3.3  | 3v3    |
 f4  | J3.4  | gpio37 | ADC_Ctrl w pullup
-f5  | J3.5  | gpio46 | Input, Internal pullup enabled, ENCODER_PULSE
-f6  | J3.6  | gpio45 | Input, Internal pullup enabled, ENCODER_LIMIT
-f7  | J3.7  | gpio42 | Output, MD10C_PWM
-f8  | J3.8  | gpio41 | Output, MD10C_DIR
+f5  | J3.5  | gpio46 | Output, MD10C_PWM
+f6  | J3.6  | gpio45 | Output, MD10C_DIR
+f7  | J3.7  | gpio42 | Output, RELAY1_IN
+f8  | J3.8  | gpio41 | 
 f9  | J3.9  | gpio40 | 
 f10 | J3.10 | gpio39 | Input, DRIVEWAY_RECEIVER, Internal pullup enabled
 f11 | J3.11 | gpio38 | Input, REMOTE_RECEIVER, with voltage div, CHECK!!!!
 f12 | J3.12 | gpio1  | VBAT_read 
-f13 | J3.13 | gpio2  | Output, RELAY1_IN
+f13 | J3.13 | gpio2  | 
 f14 | J3.14 | gpio3  |
 f15 | J3.15 | gpio4  |
-f16 | J3.16 | gpio5  |
-f17 | J3.17 | gpio6  |
-f18 | J3.18 | gpio7  |
+f16 | J3.16 | gpio5  | 
+f17 | J3.17 | gpio6  | Input, Internal pullup enabled, ENCODER_PULSE
+f18 | J3.18 | gpio7  | Input, Internal pullup enabled, ENCODER_LIMIT
 
 ---
-
+Left
 bb  | pin   | fcn    | 
 ----|-----  | ----   | 
 e1  | J2.1  | gnd    |
@@ -81,9 +81,9 @@ e7  | J2.7  | rst    | RST_SW
 e8  | J2.8  | gpio0  | USER_SW
 e9  | J2.9  | gpio36 | Vext_Ctrl w pullup
 e10 | J2.10 | gpio35 | LED_Write
-e11 | J2.11 | gpio34 | TTL-RxD
-e12 | J2.12 | gpio33 | TTL-TxD
-e13 | J2.13 | gpio47 |
+e11 | J2.11 | gpio34 | 
+e12 | J2.12 | gpio33 | Renogy TTL-RxD
+e13 | J2.13 | gpio47 | Renogy TTL-TxD
 e14 | J2.14 | gpio48 |
 e15 | J2.15 | gpio26 |
 e16 | J2.16 | gpio21 | OLED_RST

@@ -1,6 +1,10 @@
 // -*- coding: utf-8 -*-
 
 #include <Arduino.h>
+
+#include <RHReliableDatagram.h>
+#include <RH_RF95.h>
+
 #include "renogyrover.hpp"
 #include "PeriodicTimer.hpp"
 #include "LinearActuator.hpp"
@@ -37,18 +41,17 @@ e12 | J2.12 | gpio33 | TTL-TxD
 #define DRIVEWAY_RECEIVER 39
 #define REMOTE_RECEIVER 38
 
-#define MD10C_PWM_PIN 22 // 42
-#define MD10C_DIR_PIN 21 // 41
+#define MD10C_PWM_PIN 46
+#define MD10C_DIR_PIN 45
 #define MD10C_PWM_CHAN 0
 
-#define ENCODER_PULSE_PIN 36 // 46
-#define ENCODER_LIMIT_PIN 37 //45
+#define ENCODER_PULSE_PIN 6
+#define ENCODER_LIMIT_PIN 7
 
-#define RENOGY_TXD 27 //34
-#define RENOGY_RXD 26 //33
+#define RENOGY_TXD 47
+#define RENOGY_RXD 33
 
-#define USER_BUTTON1 35 // 
-#define USER_BUTTON2 0 //
+#define USER_BUTTON1 0
 
 MD10C* motor;
 LinearActuator* gate;
@@ -57,6 +60,9 @@ RenogyRover* scc;
 
 void setup()
 {
+    pinMode(MD10C_PWM_PIN, OUTPUT);
+    digitalWrite(MD10C_PWM_PIN, 0);
+
     // Console
     Serial.begin(115200);
     while (!Serial) delay(10);
@@ -66,17 +72,14 @@ void setup()
     pinMode(GATE_LOCK, OUTPUT);
     digitalWrite(GATE_LOCK, LOW);
 
-
     pinMode(DRIVEWAY_RECEIVER, INPUT);
     pinMode(REMOTE_RECEIVER, INPUT_PULLUP);
 
     pinMode(USER_BUTTON1, INPUT);
-    pinMode(USER_BUTTON2, INPUT);
 
     motor = new MD10C(MD10C_PWM_PIN, MD10C_DIR_PIN, MD10C_PWM_CHAN);
     gate = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
     
     Serial1.begin(9600, SERIAL_8N1, RENOGY_TXD, RENOGY_RXD);
     scc = new RenogyRover(Serial1);
-    
 }

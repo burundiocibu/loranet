@@ -10,18 +10,19 @@ void loop()
     if (gate_timer.time())
         Serial.println(runtime() + gate->get_status());
 
-    if (!digitalRead(USER_BUTTON1))
+    if (millis() > 2000)
     {
-        gate->goto_position(750);
-        Serial.println(runtime() + " goto 750");
-        delay(400);
+        if (!digitalRead(USER_BUTTON1))
+        {
+            gate->goto_position(0);
+            Serial.println(runtime() + " goto 0");
+            delay(400);
+        }
     }
-    else if (!digitalRead(USER_BUTTON2))
-    {
-        gate->goto_position(0);
-        Serial.println(runtime() + " goto 0");
-        delay(400);
-    }
+
+    if (gate->save_position())
+        Serial.println(runtime() + " position saved");
+
 
     static PeriodicTimer scc_timer(5000);
     if (scc_timer.time())
