@@ -9,9 +9,6 @@
 
 #include <U8g2lib.h>
 
-#ifdef U8X8_HAVE_HW_SPI
-#include <SPI.h>
-#endif
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
@@ -54,6 +51,7 @@ MD10C* motor;
 LinearActuator* gate;
 RenogyRover* scc;
 SX1262 *radio;
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C* display;
 
 void setup()
 {
@@ -156,13 +154,13 @@ void setup()
     // radio.setDio1Action(setFlag);
 
 
-    U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R3, SSD1306_RST, SSD1306_SCL, SSD1306_SDA);
-    u8g2.begin();
-    u8g2.setFont(u8g2_font_6x13_me);
-    u8g2.firstPage();
+    display = new U8G2_SSD1306_128X64_NONAME_1_HW_I2C(U8G2_R3, SSD1306_RST, SSD1306_SCL, SSD1306_SDA);
+    display->begin();
+    display->setFont(u8g2_font_6x13_me);
+    display->firstPage();
     do {
-        u8g2.setCursor(0, 12);
-        u8g2.print(F("gate mgr"));
+        display->setCursor(0, 12);
+        display->print(F("gate mgr"));
 
-    } while ( u8g2.nextPage() );
+    } while ( display->nextPage() );
 }

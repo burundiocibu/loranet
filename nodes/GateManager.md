@@ -102,8 +102,6 @@ GPIO13 | LoRa_BUSY
 GPIO17 | OLED_SDA
 GPIO18 | OLED_SCL
 
-
-
 | Relay   | Connections
 |---------|------------
 | 5V      | 5VDC
@@ -129,7 +127,6 @@ GPIO18 | OLED_SCL
 | Gnd     | Gnd
 | Vcc     | 5VDC
 
-
 | Terminals | Connections
 |-----------|------------
 | 12VDC     | Charge controller Vload +, PWB 12VDC buss
@@ -140,13 +137,6 @@ GPIO18 | OLED_SCL
 | Act Blk   | Motor -, TB67H420 A-, Actuator Black
 | Act Blu   | Lock -, Gnd
 | Act Yel   | Lock +, Relay NO
-| Rcvr      | Remote receiver signal, Feather A2, PWB D68
-| Rcvr Gnd  | Remote receiver Gnd, Gnd, Gnd buss
-
-#### Remote recevier
-Mighty Mule AQ201-NB
-Takes +5 to drive
-uses a Hope RF CMT2210LH OOK receiver
 
 #### Gate actuator
 Actuator is a MM371W, made by MightyMule.
