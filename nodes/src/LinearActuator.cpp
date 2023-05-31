@@ -101,7 +101,6 @@ bool LinearActuator::get_limit() { return limit; }
 // Fully extending arm is max pos, estimated.
 void LinearActuator::goto_position(long position)
 {
-    Serial.println("goto " + String(position));
     if (position < 0)
         return;
 
