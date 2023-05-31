@@ -13,7 +13,7 @@ void send_msg(uint8_t dest, String& msg)
 }
 
 
-void send_update(uint8_t dest)
+void send_gate_status(uint8_t dest)
 {
     // LiIon pack directly connected to feather
     float vbat = analogRead(VBAT) * 2 * 3.3 / 1024;
@@ -40,7 +40,7 @@ void send_position_update(uint8_t dest)
     send_msg(dest, msg);
 }
 
-void send_scc_update(uint8_t dest)
+void send_scc_status(uint8_t dest)
 {
     float bv = scc->battery_voltage();
     if (bv > 100)
@@ -84,19 +84,23 @@ void loop()
             scc->load_on(1);
         else if (msg=="R0")
             scc->load_on(0);
+        else if (msg=="GS")
+            send_gate_status();
+        else if (msg=="SS")
+            send_scc_status();
     }
 
     bool open_gate = digitalRead(DRIVEWAY_RECEIVER) | !digitalRead(REMOTE_RECEIVER);
     if (open_gate)
         send_position_update(0);
 
-    static PeriodicTimer update_timer(10000);
+    static PeriodicTimer update_timer(60000);
     if (update_timer.time())
-        send_update(0);
+        send_gate_status(0);
 
     static PeriodicTimer ssc_update_timer(60000);
     if (ssc_update_timer.time())
-        send_scc_update(0);
+        send_scc_status(0);
 
     if (gate->get_speed() == 0)
         gate_timer.set_interval(9999999);

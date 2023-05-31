@@ -3,19 +3,20 @@
 
 bool PeriodicTimer::time()
 {
+    uint32_t now = millis();
     if (last_trigger == 0)
     {
-        last_trigger = millis();
+        last_trigger = now;
         return true;
     }
 
-    long dt = millis() - last_trigger;
+    long dt = now - last_trigger;
     if (dt < 0)
         dt += 0x10000;
 
     if (dt > interval)
     {
-        last_trigger += interval;
+        last_trigger = now;
         return true;
     }
     return false;
