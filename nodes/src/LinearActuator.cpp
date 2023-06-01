@@ -1,6 +1,5 @@
 // -*- coding: utf-8 -*-
 #include "Preferences.h"
-
 #include "LinearActuator.hpp"
 #include "utils.hpp"
 

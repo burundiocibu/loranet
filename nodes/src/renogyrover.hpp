@@ -3,6 +3,9 @@
 // https://github.com/4-20ma/ModbusMaster
 #include <ModbusMaster.h>
 
+#ifndef RENOGY_SCC_HPP
+#define RENOGY_SCC_HPP
+
 // The modbus ICD for the renogy rover/wander series
 // https://docs.google.com/document/d/1OSW3gluYNK8d_gSz4Bk89LMQ4ZrzjQY6/edit
 
@@ -44,3 +47,4 @@ class RenogyRover
         ModbusMaster node;
         uint16_t read_register(uint16_t reg);
 };
+#endif

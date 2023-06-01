@@ -1,6 +1,9 @@
 // -*- coding: utf-8 -*-
 #include <Arduino.h>
 
+#ifndef MD10C_HPP
+#define MD10C_HPP
+
 // MD10C motor driver from cytron
 // https://makermotor.com/pn00218-cyt2-cytron-13a-dc-motor-driver-md10c/
 // https://makermotor.com/content/cytron/pn00218-cyt2/MD10C%20Rev2.0%20User%27s%20Manual.pdf
@@ -24,3 +27,4 @@ class MD10C
         int speed; // -255..255
         int direction;
 };
+#endif

@@ -1,6 +1,9 @@
 // -*- coding: utf-8 -*-
 #include "md10c.hpp"
 
+#ifndef LINEAR_ACTUATOR_HPP
+#define LINEAR_ACTUATOR_HPP
+
 class LinearActuator
 {
     public:
@@ -27,3 +30,4 @@ class LinearActuator
 
 
 };
+#endif

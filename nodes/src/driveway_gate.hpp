@@ -1,15 +1,14 @@
 // -*- coding: utf-8 -*-
-
 #include <Arduino.h>
-#include "renogyrover.hpp"
-#include "PeriodicTimer.hpp"
-#include "LinearActuator.hpp"
-#include "LoraNode.hpp"
-
 #include <U8g2lib.h>
 #include <Wire.h>
 #include <SPI.h>
 
+#include "renogyrover.hpp"
+#include "PeriodicTimer.hpp"
+#include "LinearActuator.hpp"
+#include "Gate.hpp"
+#include "LoraNode.hpp"
 
 // This hardware is a Heltec wifi-lora esp32 v3 module
 
@@ -45,7 +44,8 @@
 #define USER_BUTTON1 0
 
 MD10C* motor;
-LinearActuator* gate;
+LinearActuator* actuator;
+Gate* gate;
 RenogyRover* scc;
 LoraNode* node;
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C* display;
@@ -73,7 +73,8 @@ void setup()
     pinMode(USER_BUTTON1, INPUT);
 
     motor = new MD10C(MD10C_PWM_PIN, MD10C_DIR_PIN, MD10C_PWM_CHAN);
-    gate = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
+    actuator = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
+    gate = new Gate(actuator);
     
     Serial1.begin(9600, SERIAL_8N1, RENOGY_TXD, RENOGY_RXD);
     scc = new RenogyRover(Serial1);

@@ -1,5 +1,4 @@
 // -*- coding: utf-8 -*-
-
 #include "driveway_gate.hpp"
 #include "utils.hpp"
 
@@ -19,7 +18,8 @@ void send_gate_status(uint8_t dest)
     float vbat = analogRead(VBAT) * 2 * 3.3 / 1024;
 
     String msg;
-    msg += String("gp:") + String(gate->get_position());
+    msg += String("gp:") + String(long(gate->get_position()));
+    msg += String(",ap:") + String(actuator->get_position());
     msg += String(",vb:") + String(vbat);
     msg += String(",rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
@@ -31,10 +31,11 @@ void send_gate_status(uint8_t dest)
     send_msg(dest, msg);
 }
 
+
 void send_position_update(uint8_t dest)
 {
     String msg;
-    msg += String("gp:") + String(gate->get_position());
+    msg += String("gp:") + String(long(gate->get_position()));
     msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
     msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
     send_msg(dest, msg);
@@ -72,7 +73,7 @@ void loop()
         Serial.println(runtime() + " Rx: " + msg);
         if (msg=="GO")
         {
-            gate->goto_position(800);
+            gate->goto_position(100);
             gate_timer.set_interval(200);
         }
         else if (msg=="GC")
@@ -80,14 +81,20 @@ void loop()
             gate->goto_position(0);
             gate_timer.set_interval(200);
         }
+        else if (msg=="G+")
+            actuator->goto_position(actuator->get_position()-10);
+        else if (msg=="G-")
+            actuator->goto_position(actuator->get_position()+10);
+        else if (msg=="SGC")
+            gate->set_closed_position(actuator->get_position());
         else if (msg=="R1")
             scc->load_on(1);
         else if (msg=="R0")
             scc->load_on(0);
         else if (msg=="GS")
-            send_gate_status();
+            send_gate_status(0);
         else if (msg=="SS")
-            send_scc_status();
+            send_scc_status(0);
     }
 
     bool open_gate = digitalRead(DRIVEWAY_RECEIVER) | !digitalRead(REMOTE_RECEIVER);
@@ -111,22 +118,28 @@ void loop()
     {
         if (!digitalRead(USER_BUTTON1))
         {
-            gate->goto_position(0);
-            Serial.println(runtime() + " goto 0");
+            actuator->goto_position(0);
+            Serial.println(runtime() + " retract arm");
             delay(400);
         }
     }
 
-    if (gate->save_position())
+    if (actuator->save_position())
         Serial.println(runtime() + " position saved");
 
+
+    // this takes about 32 ms.
     display->firstPage();
     do {
         display->setCursor(0, 11);
         display->print(F("gate mgr"));
         display->setCursor(0, 24);
-        display->print(F("gp "));
+        display->print(F("ap "));
         display->setCursor(14, 24);
-        display->print(String(gate->get_position()));
+        display->print(String(actuator->get_position()));
+        display->setCursor(0, 37);
+        display->print(F("gp "));
+        display->setCursor(14, 37);
+        display->print(String((int)gate->get_position()));
     } while ( display->nextPage() );
 }
