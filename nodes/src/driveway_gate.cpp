@@ -20,7 +20,7 @@ void send_gate_status(uint8_t dest)
     String msg;
     msg += String("gp:") + String(long(gate->get_position()));
     msg += String(",ap:") + String(actuator->get_position());
-    msg += String(",vb:") + String(vbat);
+    msg += String(",v1:") + String(vbat);
     msg += String(",rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String (int(uptime()));
@@ -36,6 +36,7 @@ void send_position_update(uint8_t dest)
 {
     String msg;
     msg += String("gp:") + String(long(gate->get_position()));
+    msg += String(",ap:") + String(actuator->get_position());
     msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
     msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
     send_msg(dest, msg);
@@ -72,28 +73,26 @@ void loop()
     {
         Serial.println(runtime() + " Rx: " + msg);
         if (msg=="GO")
-        {
             gate->goto_position(100);
-            gate_timer.set_interval(200);
-        }
         else if (msg=="GC")
-        {
             gate->goto_position(0);
-            gate_timer.set_interval(200);
-        }
+        else if (msg=="GS")
+            gate->stop();
+        else if (msg.startsWith("GP"))
+            gate->goto_position(msg.substring(2).toInt());
         else if (msg=="G+")
             actuator->goto_position(actuator->get_position()-10);
         else if (msg=="G-")
             actuator->goto_position(actuator->get_position()+10);
-        else if (msg=="SGC")
+        else if (msg=="GSCP")
             gate->set_closed_position(actuator->get_position());
         else if (msg=="R1")
             scc->load_on(1);
         else if (msg=="R0")
             scc->load_on(0);
-        else if (msg=="GS")
+        else if (msg=="S1")
             send_gate_status(0);
-        else if (msg=="SS")
+        else if (msg=="S2")
             send_scc_status(0);
     }
 
@@ -111,6 +110,8 @@ void loop()
 
     if (gate->get_speed() == 0)
         gate_timer.set_interval(9999999);
+    else
+        gate_timer.set_interval(200);
     if (gate_timer.time())
         send_position_update(0);
 

@@ -1,5 +1,6 @@
 // -*- coding: utf-8 -*-
 #include "Gate.hpp"
+#include "utils.hpp"
 
 
 Gate::Gate(LinearActuator* la_ptr) : 
@@ -9,6 +10,7 @@ Gate::Gate(LinearActuator* la_ptr) :
     gate_prefs.begin("Gate");
     closed_position = gate_prefs.getLong("closed_position", flag_value);
     gate_prefs.end();
+    Serial.println(runtime() + " loaded closed_position:" + String(closed_position));
 }
 
 void Gate::goto_position(float position)
@@ -21,6 +23,12 @@ float Gate::get_position()
     return 100*(closed_position - actuator->get_position())/closed_position;
 };
 
+void Gate::stop()
+{
+    actuator->goto_position(actuator->get_position());
+};
+
+
 int Gate::get_speed()
 {
     return actuator->get_speed();
@@ -32,6 +40,7 @@ bool Gate::set_closed_position(long position)
     gate_prefs.begin("Gate");
     gate_prefs.putLong("closed_position", closed_position);
     gate_prefs.end();
+    Serial.println(runtime() + " saved closed_position:" + String(closed_position));
     return true;
 };
 

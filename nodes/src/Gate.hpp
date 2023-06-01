@@ -15,6 +15,7 @@ class Gate
         void goto_position(float position);
         float get_position();
         int get_speed();
+        void stop();
         bool set_closed_position(long position);
         long get_closed_position();
 
