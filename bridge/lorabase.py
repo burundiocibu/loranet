@@ -42,10 +42,11 @@ class LoRaBase():
 
         self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
         self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
-        self.tx_power = 23
+        self.tx_power = 20
         self.rfm9x.tx_power = self.tx_power
         self.rfm9x.node = 0
         self.rfm9x.flags = 0 # default is 0
+        self.rfm9x.preamble_length = 12
         self.tx_stats = {'count':0, 'err':0 }
         self.rx_stats = {'count':0, 'err':0 }
         self.rfm9x_lock = threading.Lock()
@@ -60,7 +61,7 @@ class LoRaBase():
             t0 = time.perf_counter()
             self.rfm9x.destination = dest #  default is 255 (broadcast)
             self.tx_stats['count'] += 1
-            if not self.rfm9x.send_with_ack(bytes(msg, "utf-8")):
+            if not self.rfm9x.send(bytes(msg, "utf-8")):
                 self.tx_stats['err'] += 1
                 self.print_stats("noack")
                 return False
@@ -79,7 +80,7 @@ class LoRaBase():
             t0 = time.perf_counter()
             self.rfm9x.receive_timeout = timeout # seconds
             self.rfm9x.destination = sender
-            packet = self.rfm9x.receive(with_header=True, with_ack=True)
+            packet = self.rfm9x.receive(with_header=True)
             self.rx_stats['rtt'] = round(1000 * (time.perf_counter() - t0),0)
             sender = packet[1]
             self.msg = packet[4:]
@@ -103,9 +104,10 @@ class LoRaBase():
             self.rfm9x.listen()
             self.rfm9x.destination = 0 #  default is 255 (broadcast)
             self.rfm9x.receive_timeout = timeout # seconds
-            packet = self.rfm9x.receive(with_header=True, with_ack=True, keep_listening=True)
+            packet = self.rfm9x.receive(with_header=True, keep_listening=True)
             dt = round(1000 * (time.perf_counter() - t0), 0)
             if packet is not None:
+                logger.debug(f"Rx rssi:{self.rfm9x.last_rssi}, snr:{self.rfm9x.last_snr}")
                 return int(packet[1]), packet[4:]
             else:
                 return None, None

@@ -20,40 +20,40 @@ class DrivewayGate(entities.LoRaNode):
         self.mqtt_client.subscribe(self.gate.config.command_topic)
         self.mqtt_client.message_callback_add(self.gate.config.set_position_topic, self.gate_mqrx)
         self.mqtt_client.subscribe(self.gate.config.set_position_topic)
+        self.actuator_position = entities.Sensor(f"{self.name} Actuator Position", self.device_config, mqtt_client, "mm")
 
-        self.poe_enable = entities.Switch(f"{self.name} PoE Enable", self.device_config, self.mqtt_client)
-        self.mqtt_client.message_callback_add(self.poe_enable.config.command_topic, self.poe_mqrx)
-        self.mqtt_client.subscribe(self.poe_enable.config.command_topic)
+        self.gate_jog_open = entities.Button(f"{self.name} Jog Open", self.device_config, self.mqtt_client, icon="mdi:gate-open")
+        self.mqtt_client.message_callback_add(self.gate_jog_open.config.command_topic, self.gate_jog_open_mqrx)
+        self.mqtt_client.subscribe(self.gate_jog_open.config.command_topic)
 
-        self.gate_enable = entities.Switch(f"{self.name} Enable", self.device_config, self.mqtt_client)
-        self.mqtt_client.message_callback_add(self.gate_enable.config.command_topic, self.gate_enable_mqrx)
-        self.mqtt_client.subscribe(self.gate_enable.config.command_topic)
+        self.gate_jog_close = entities.Button(f"{self.name} Jog Close", self.device_config, self.mqtt_client, icon="mdi:gate")
+        self.mqtt_client.message_callback_add(self.gate_jog_close.config.command_topic, self.gate_jog_close_mqrx)
+        self.mqtt_client.subscribe(self.gate_jog_close.config.command_topic)
 
-        self.rover_load_enable = entities.Switch(f"{self.name} Rover Load Enable", self.device_config, self.mqtt_client)
-        self.mqtt_client.message_callback_add(self.rover_load_enable.config.command_topic, self.rover_mqrx)
-        self.mqtt_client.subscribe(self.rover_load_enable.config.command_topic)
+        self.gate_set_closed_position = entities.Button(f"{self.name} Set Closed Position", self.device_config, self.mqtt_client, icon="mdi:arrow-down")
+        self.mqtt_client.message_callback_add(self.gate_set_closed_position.config.command_topic, self.gate_set_closed_position_mqrx)
+        self.mqtt_client.subscribe(self.gate_set_closed_position.config.command_topic)
 
-        self.feather_battery = entities.BatteryLevel(f"{self.name} LoRa Battery", self.device_config, mqtt_client)
-        self.feather_battery_voltage = entities.Voltage(f"{self.name} LoRa Battery Voltage", self.device_config, mqtt_client)
-        self.gate_battery = entities.BatteryLevel(f"{self.name} Battery", self.device_config, mqtt_client)
-        self.gate_battery_voltage = entities.Voltage(f"{self.name} Battery Voltage", self.device_config, mqtt_client)
+        self.scc_load_enable = entities.Switch(f"{self.name} SCC Load Enable", self.device_config, self.mqtt_client)
+        self.mqtt_client.message_callback_add(self.scc_load_enable.config.command_topic, self.scc_mqrx)
+        self.mqtt_client.subscribe(self.scc_load_enable.config.command_topic)
+
+        self.esp_battery = entities.BatteryLevel(f"{self.name} esp Battery", self.device_config, mqtt_client)
+        self.esp_battery_voltage = entities.Voltage(f"{self.name} esp Battery Voltage", self.device_config, mqtt_client)
         self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
-        self.rtt = entities.Sensor(f"{self.name} rtt", self.device_config, mqtt_client, "ms")
+        self.snr = entities.SNR(f"{self.name} SNR", self.device_config, mqtt_client)
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
 
-        self.rover_battery_voltage = entities.Voltage(f"{self.name} Rover Battery Voltage", self.device_config, mqtt_client)
-        self.rover_battery_current = entities.Current(f"{self.name} Rover Battery Current", self.device_config, mqtt_client)
-        self.rover_battery = entities.BatteryLevel(f"{self.name} Rover Battery", self.device_config, mqtt_client)
+        self.scc_battery_voltage = entities.Voltage(f"{self.name} SCC Battery Voltage", self.device_config, mqtt_client)
+        self.scc_battery_current = entities.Current(f"{self.name} SCC Battery Current", self.device_config, mqtt_client)
+        self.scc_battery = entities.BatteryLevel(f"{self.name} SCC Battery", self.device_config, mqtt_client)
+        self.scc_discharge_limit = entities.Voltage(f"{self.name} SCC Discharge Limit", self.device_config, mqtt_client)
 
-        self.rover_load_voltage = entities.Voltage(f"{self.name} Rover Load Voltage", self.device_config, mqtt_client)
-        self.rover_load_current = entities.Current(f"{self.name} Rover Load Current", self.device_config, mqtt_client)
-        self.rover_load_power = entities.Power(f"{self.name} Rover Load Power", self.device_config, mqtt_client)
+        self.scc_load_power = entities.Power(f"{self.name} SCC Load Power", self.device_config, mqtt_client)
 
-        self.rover_solar_power = entities.Power(f"{self.name} Rover Solar Power", self.device_config, mqtt_client)
-        self.rover_solar_voltage = entities.Voltage(f"{self.name} Rover Solar Voltage", self.device_config, mqtt_client)
-        self.rover_solar_current = entities.Current(f"{self.name} Rover Solar Current", self.device_config, mqtt_client)
-        self.rover_charge_state = entities.Sensor(f"{self.name} Rover Charge State", self.device_config, mqtt_client)
-        self.rover_temperature = entities.Temperature(f"{self.name} Rover Temperature", self.device_config, mqtt_client)
+        self.scc_solar_power = entities.Power(f"{self.name} SCC Charge Power", self.device_config, mqtt_client)
+        self.scc_charge_state = entities.Sensor(f"{self.name} SCC Charge State", self.device_config, mqtt_client)
+        self.scc_temperature = entities.Temperature(f"{self.name} SCC Temperature", self.device_config, mqtt_client)
 
     def update_state(self):
         logger.info("Requesting state")
@@ -64,54 +64,50 @@ class DrivewayGate(entities.LoRaNode):
         try:
             msg = self.radio.decode_msg(packet)
             self.rssi.publish_state(self.radio.rfm9x.last_rssi)
-            if 'rtt' in msg:
-                self.rtt.publish_state(int(msg['rtt']))
-            if 'fvb' in msg:
-                self.feather_battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / (4.19 - 3.4)))
-                self.feather_battery_voltage.publish_state(float(msg["fvb"]))
-            if 'gvb' in msg:
-                self.gate_battery.publish_state(int(100 * (float(msg["gvb"]) - 10.5) / (14.14 - 10.5)))
-                self.gate_battery_voltage.publish_state(float(msg["gvb"]))
+            if 'v1' in msg:
+                self.esp_battery.publish_state(int(100 * (float(msg["v1"]) - 3.4) / (4.19 - 3.4)))
+                self.esp_battery_voltage.publish_state(float(msg["v1"]))
+
             if 'ut' in msg:
                 self.uptime.publish_state(int(msg["ut"]))
 
+            if 'snr' in msg:
+                self.snr.publish_state(int(msg["snr"]))
+
+            if 'rssi' in msg:
+                self.rssi.publish_state(int(msg["rssi"]))
+
             if 'bv' in msg:
-                self.rover_battery_voltage.publish_state(float(msg["bv"]));
+                self.scc_battery_voltage.publish_state(float(msg["bv"]));
+            
             if 'bc' in msg:
-                self.rover_battery_current.publish_state(float(msg["bc"]));
+                self.scc_battery_current.publish_state(float(msg["bc"]));
+            
             if 'bp' in msg:
-                self.rover_battery.publish_state(float(msg["bp"]))
+                self.scc_battery.publish_state(float(msg["bp"]))
 
-            if 'lv' in msg and 'lc' in msg:
-                self.rover_load_voltage.publish_state(round(float(msg["lv"]),2))
-                self.rover_load_current.publish_state(round(float(msg["lc"]),2)) # for some reason this reads high
-                self.rover_load_power.publish_state(round(float(msg["lv"]) * float(msg["lc"]),2))
+            if 'dl' in msg:
+                self.scc_discharge_limit.publish_state(float(msg["dl"]))
 
-            if 'sv' in msg and 'sc' in msg:
-                self.rover_solar_voltage.publish_state(round(float(msg["sv"]),2))
-                self.rover_solar_current.publish_state(round(float(msg["sc"]),2))
-                self.rover_solar_power.publish_state(round(float(msg["sv"]) * float(msg["sc"]),2))
+            if 'cp' in msg:
+                self.scc_solar_power.publish_state(round(float(msg["cp"]),2))
 
             if 'cs' in msg:
-                self.rover_charge_state.publish_state(int(msg["cs"]))
+                self.scc_charge_state.publish_state(int(msg["cs"]))
+
+            if 'lp' in msg:
+                self.scc_load_power.publish_state(float(msg["lp"]))
 
             if 'ct' in msg:
-                self.rover_temperature.publish_state(float(msg["ct"]))
-
-            if 'poe' in msg:
-                if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
-                else:                     self.poe_enable.state = "ON"
-                self.poe_enable.publish_state()
-
-            if 'ge' in msg:
-                if int(msg["ge"]) == 0:  self.gate_enable.state = "OFF"
-                else:                    self.gate_enable.state = "ON"
-                self.gate_enable.publish_state()
+                self.scc_temperature.publish_state(float(msg["ct"]))
 
             if 'lo' in msg:
-                if int(msg["lo"]) == 0:  self.rover_load_enable.state = "OFF"
-                else:                    self.rover_load_enable.state = "ON"
-                self.rover_load_enable.publish_state()
+                if int(msg["lo"]) == 0:  self.scc_load_enable.state = "OFF"
+                else:                    self.scc_load_enable.state = "ON"
+                self.scc_load_enable.publish_state()
+
+            if 'ap' in msg:
+                self.actuator_position.publish_state(round(float(msg["ap"])*.213,2))
 
             if 'gp' in msg:
                 self.gate.position = int(msg["gp"])
@@ -133,40 +129,34 @@ class DrivewayGate(entities.LoRaNode):
                 logger.info("Closing")
                 self.radio.tx(self.id, "GC")
             elif message.payload == b'STOP':
-                logger.info("Nope")
+                logger.info("Stopping")
+                self.radio.tx(self.id, "GS")
         if message.topic == self.gate.config.set_position_topic:
             self.gate.position = int(message.payload)
             logger.info(f"position = {self.gate.position}")
-            self.radio.tx(self.id, f"K{self.gate.position}")
+            self.radio.tx(self.id, f"GP{self.gate.position}")
 
-    def poe_mqrx(self, mqtt_client, obj, message):
-        if message.payload == b"ON":
-            logger.info("poe on")
-            self.radio.tx(self.id, "E1")
-        elif message.payload == b"OFF":
-            logger.info("poe off")
-            self.radio.tx(self.id, "E0")
-        else:
-            logger.warning(f"Received unexpected mqtt message: {message.payload}")
-            return
+    def gate_jog_open_mqrx(self, mqtt_client, obj, message):
+        logger.info(f"jog open")
+        self.radio.tx(self.id, "G+")
+        return
 
-    def gate_enable_mqrx(self, mqtt_client, obj, message):
-        if message.payload == b"ON":
-            logger.info("gate enable on")
-            self.radio.tx(self.id, "GE1")
-        elif message.payload == b"OFF":
-            logger.info("gate enable off")
-            self.radio.tx(self.id, "GE0")
-        else:
-            logger.warning(f"Received unexpected mqtt message: {message.payload}")
-            return
+    def gate_jog_close_mqrx(self, mqtt_client, obj, message):
+        logger.info(f"jog close")
+        self.radio.tx(self.id, "G-")
+        return
 
-    def rover_mqrx(self, mqtt_client, obj, message):
+    def gate_set_closed_position_mqrx(self, mqtt_client, obj, message):
+        logger.info(f"set closed position")
+        self.radio.tx(self.id, "GSCP")
+        return
+
+    def scc_mqrx(self, mqtt_client, obj, message):
         if message.payload == b"ON":
-            logger.info("rover load on")
+            logger.info("scc load on")
             self.radio.tx(self.id, "R1")
         elif message.payload == b"OFF":
-            logger.info("rover load off")
+            logger.info("scc load off")
             self.radio.tx(self.id, "R0")
         else:
             logger.warning(f"Received unexpected mqtt message: {message.payload}")

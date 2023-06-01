@@ -104,6 +104,12 @@ class RSSI(BaseEntity):
         self.config.unit_of_measurement = "dBm"
         self.publish_discovery()
 
+class SNR(BaseEntity):
+    def __init__(self, name, device, mqtt_client):
+        super().__init__(name, "signal_strength", "sensor", device, mqtt_client)
+        self.config.unit_of_measurement = "dBm"
+        self.publish_discovery()
+
 
 class Timestamp(BaseEntity):
     def __init__(self, name, device, mqtt_client, units=None):
@@ -167,3 +173,14 @@ class Switch(BaseEntity):
         self.config.command_topic = f"{self.topic}/command"
         self.publish_discovery()
         self.state = "off"
+
+
+class Button(BaseEntity):
+    def __init__(self, name, device, mqtt_client, icon):
+        super().__init__(name, "button", "button", device, mqtt_client)
+        self.config.command_topic = f"{self.topic}/command"
+        self.config.acty_t = f"{self.topic}/status"
+        self.config.icon = icon
+        del self.config.device_class
+        del self.config.state_topic
+        self.publish_discovery()
