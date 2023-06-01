@@ -6,13 +6,14 @@
 #include <RH_RF95.h>
 
 #include "renogyrover.hpp"
+#include "PeriodicTimer.hpp"
+#include "LinearActuator.hpp"
+#include "utils.hpp"
 
 // for feather32u4
-#define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 7 // This is from the pinout image, not the text
-
-// Change to 434.0 or other frequency, must match RX's freq!
+#define RFM95_CS 8
 #define RF95_FREQ 915.0
 
 // Singleton instance of the radio driver
@@ -23,70 +24,49 @@ RHReliableDatagram manager(rf95, NODE_ADDRESS);
 
 #define FEATHER_VBAT 9  // connected to feather Vbatt through a 1/2 divider network
 
-#define GATE_SAFE 21 // GPIO output to relay
-#define GATE_OPEN 22 // GPIO output to relay
-#define POE_ENABLE 23 // GPIO output to relay
-#define GATE_ENABLE 20  // gate controler on/off
+#define GATE_LOCK 21 // GPIO output to relay
+#define DRIVEWAY_RECEIVER A3
+#define REMOTE_RECEIVER A2
+#define ROVER_VLOAD A11 // (w divider)
 
-#define GATE_VBAT A11 // (w divider)
+#define MD10C_PWM_PIN 5
+#define MD10C_DIR_PIN 10
+
+#define ENCODER_PIN 2  // Must be on an external interrupt pin
+#define ENCODER_LIMIT_PIN 11 // Must be on a pcint
+
 
 // 5 to 23 dB on this device
-int txpwr = 23;
+int txpwr = 20;
 
 int tx_rtt = 0;
 int gate_position = 0;
-int poe_enable = 0;
-int gate_enable = 1;
 int rover_load_enable = 1;
 
 RenogyRover rover(Serial1, 1);
 
-long dt(unsigned long start_time)
-{
-    unsigned long now = millis();
-    if (now < start_time)
-        return now - start_time + 0x10000;
-    else
-        return now - start_time;
-}
-
-// returns uptime in seconds
-long uptime()
-{
-    static uint32_t last_millis = 0;
-    static uint32_t wraps = 0;
-    uint32_t ms = millis();
-    if (ms < last_millis)
-        wraps++;
-    return ms / 1000 + wraps * 4294967; // 4294967 = 2^32/1000
-}
 
 void setup()
 {
+    // Console
+    Serial.begin(115200);
+    while (!Serial) delay(10);
+    Serial.println("LoRaNet node");
+
     pinMode(RFM95_RST, OUTPUT);
     digitalWrite(RFM95_RST, HIGH);
 
-    pinMode(GATE_OPEN, OUTPUT);
-    digitalWrite(GATE_OPEN, LOW);
-    pinMode(GATE_SAFE, OUTPUT);
-    digitalWrite(GATE_SAFE, LOW);
+    pinMode(GATE_LOCK, OUTPUT);
+    digitalWrite(GATE_LOCK, LOW);
 
-    pinMode(GATE_ENABLE, OUTPUT);
-    digitalWrite(GATE_ENABLE, gate_enable);
-
-    pinMode(POE_ENABLE, OUTPUT);
-    digitalWrite(POE_ENABLE, poe_enable);
-
-    // modbus
-    Serial1.begin(9600);
-
-    // Console
-    Serial.begin(115200);
-    //while (!Serial) delay(10);
-    Serial.println("LoRaNet node");
+    pinMode(DRIVEWAY_RECEIVER, INPUT);
+    pinMode(REMOTE_RECEIVER, INPUT_PULLUP);
 
     if (!manager.init())
         Serial.println("manager init failed");
+
+    // modbus
+    Serial1.begin(9600);
 
     // manual reset the radio
     if (false)
@@ -116,26 +96,8 @@ void setup()
 
     rf95.setTxPower(txpwr, false);
 
-    // Always start with the rover on
-    if (!rover.load_on())
-        rover.load_on(1);
-
-}
-
-
-String runtime()
-{
-    unsigned long ms=millis();
-    long sec = ms/1000;
-    ms -= sec * 1000;
-    long hour = sec / 3600;
-    sec -= hour*3600;
-    long min = sec/60;
-    sec -= min*60;
-
-    char buff[12];
-    sprintf(buff, "%ld:%02ld:%02ld.%03ld", hour, min, sec, ms);
-    return String(buff);
+    if (rover.load_on() != rover_load_enable)
+        rover.load_on(rover_load_enable);
 }
 
 
@@ -154,8 +116,8 @@ void send_update(uint8_t dest)
 {
     // LiIon pack directly connected to feather
     float feather_vbat = analogRead(FEATHER_VBAT) * 2 * 3.3 / 1024;
-    // Gel-cell that powers the gate controller board
-    float gate_vbat = analogRead(GATE_VBAT) * 4.29 * 3.3/1024;
+    // LiFePo4 battery managed by the renogy mgr
+    float gate_vbat = analogRead(ROVER_VLOAD) * 4.29 * 3.3/1024;
 
     String msg;
     msg += String("gp:") + String(gate_position);
@@ -164,70 +126,43 @@ void send_update(uint8_t dest)
     msg += String(",rssi:") + String(rf95.lastRssi());
     msg += String(",snr:") + String(rf95.lastSNR());
     msg += String(",txpwr:") + String(txpwr);
-    msg += String(",ut:") + String (uptime());
-    msg += String(",poe:") + String(poe_enable);
-    msg += String(",ge:") + String(gate_enable);
+    msg += String(",ut:") + String (int(uptime()));
+    msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
+    msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
     if (tx_rtt > 0)
         msg += String(",rtt:") + String(tx_rtt);
+    int rc = rover.battery_voltage() < 100;
+    msg += String(",rc:") + String(rc);
     send_msg(dest, msg);
+}
 
+void send_position_update(uint8_t dest)
+{
+    String msg;
+    msg += String("gp:") + String(gate_position);
+    msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
+    msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
+    send_msg(dest, msg);
+}
 
+void send_rover_update(uint8_t dest)
+{
     float bv = rover.battery_voltage();
-    if (bv < 100)
-    {
-        msg = String("bv:") + String(bv);
-        msg += String(",bc:") + String(rover.battery_current());
-        msg += String(",bp:") + String(rover.battery_percentage());
-        msg += String(",ct:") + String(rover.controller_temperature());
-        msg += String(",lv:") + String(rover.load_voltage());
-        msg += String(",lc:") + String(rover.load_current());
-        msg += String(",lp:") + String(rover.load_power());
-        msg += String(",lo:") + String(rover.load_on());
-        msg += String(",sv:") + String(rover.solar_voltage());
-        msg += String(",sc:") + String(rover.solar_current());
-        msg += String(",cp:") + String(rover.charging_power());
-        msg += String(",cs:") + String(rover.charging_state());
-        msg += String(",cf:") + String(rover.controller_fault(), HEX);
-        msg += String(",dl:") + String(rover.discharging_limit_voltage());
-        send_msg(dest, msg);
-    }
-}
+    if (bv > 100)
+        return;
 
-
-void set_gate_position(int pos, int dest)
-{
-    if (pos > 0)
-    {
-        digitalWrite(GATE_OPEN, 1);
-        delay(100);
-        digitalWrite(GATE_SAFE, 1);
-        delay(10);
-        digitalWrite(GATE_OPEN, 0);
-        gate_position = 100;
-    }
-    else
-    {
-        digitalWrite(GATE_OPEN, 0);
-        digitalWrite(GATE_SAFE, 0);
-        gate_position = 0;
-    }
-    send_msg(dest, String("gp:") + String(gate_position));
-}
-
-
-void set_poe_enable(int poe, int dest)
-{
-    poe_enable = poe?1:0;
-    digitalWrite(POE_ENABLE, poe_enable);
-    send_msg(dest, String("poe:") + String(poe_enable));
-}
-
-
-void set_gate_enable(int ge, int dest)
-{
-    gate_enable = ge?1:0;
-    digitalWrite(GATE_ENABLE, gate_enable);
-    send_msg(dest, String("ge:") + String(gate_enable));
+    String msg;
+    msg = String("bv:") + String(bv);
+    msg += String(",bc:") + String(rover.battery_current());
+    msg += String(",bp:") + String(rover.battery_percentage());
+    msg += String(",ct:") + String(rover.controller_temperature());
+    msg += String(",lp:") + String(rover.load_power());
+    msg += String(",lo:") + String(rover.load_on());
+    msg += String(",cp:") + String(rover.charging_power());
+    msg += String(",cs:") + String(rover.charging_state());
+    msg += String(",cf:") + String(rover.controller_fault(), HEX);
+    msg += String(",dl:") + String(rover.discharging_limit_voltage());
+    send_msg(dest, msg);
 }
 
 
@@ -239,10 +174,13 @@ void set_rover_load(int load, int dest)
 }
 
 
-unsigned long last_update = 0;
+
 
 void loop()
 {
+    static MD10C motor(MD10C_PWM_PIN, MD10C_DIR_PIN);
+    static LinearActuator gate(ENCODER_PIN, ENCODER_LIMIT_PIN, &motor);
+
     uint8_t rf95_buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(rf95_buf);
     uint8_t from;
@@ -253,20 +191,26 @@ void loop()
         String msg((char*)rf95_buf);
         Serial.println(runtime() + " Rx: " + msg);
 
-        if (msg=="GO")       set_gate_position(100, from);
-        else if (msg=="GC")  set_gate_position(0, from);
-        else if (msg=="GE1") set_gate_enable(1, from);
-        else if (msg=="GE0") set_gate_enable(0, from);
-        else if (msg=="E1")  set_poe_enable(1, from);
-        else if (msg=="E0")  set_poe_enable(0, from);
+        if (msg=="GO")       gate.goto_position(10000);
+        else if (msg=="GC")  gate.goto_position(0);
         else if (msg=="R1")  set_rover_load(1, from);
         else if (msg=="R0")  set_rover_load(0, from);
     }
 
-    const long update_rate = 15000; // ms
-    if (last_update == 0 || dt(last_update) > update_rate)
-    {
+    static PeriodicTimer gate_timer(1000);
+    if (gate_timer.time() || gate.get_speed())
+        Serial.println(runtime() + gate.get_status());
+
+    bool open_gate = digitalRead(DRIVEWAY_RECEIVER) | !digitalRead(REMOTE_RECEIVER);
+    if (open_gate)
+        send_position_update(0);
+
+    static PeriodicTimer update_timer(30000);
+    if (update_timer.time())
         send_update(0);
-        last_update += update_rate;
-    }
+
+    static PeriodicTimer rover_update_timer(60000);
+    if (rover_update_timer.time())
+        send_rover_update(0);
 }
+
