@@ -1,4 +1,5 @@
 // -*- coding: utf-8 -*-
+#include <MacroLogger.h>
 #include "Preferences.h"
 #include "LinearActuator.hpp"
 #include "utils.hpp"
@@ -125,15 +126,15 @@ void LinearActuator::goto_position(long position)
 }
 
 
-bool LinearActuator::save_position()
+void LinearActuator::save_position()
 {
     if (!dirty_position || motor->get_speed())
-        return false;
+        return;
     preferences.begin("LinearActuator");
     preferences.putInt("position", current_position);
     preferences.end();
     dirty_position = false;
-    return true;
+    Logger::info("position saved");
 }
 
 String LinearActuator::get_status()

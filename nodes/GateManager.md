@@ -57,8 +57,8 @@ f6  | J3.6  | gpio45 | Output, MD10C_DIR
 f7  | J3.7  | gpio42 | Output, RELAY1_IN
 f8  | J3.8  | gpio41 | 
 f9  | J3.9  | gpio40 | 
-f10 | J3.10 | gpio39 | Input, DRIVEWAY_RECEIVER, Internal pullup enabled
-f11 | J3.11 | gpio38 | Input, REMOTE_RECEIVER, with voltage div, CHECK!!!!
+f10 | J3.10 | gpio39 | 
+f11 | J3.11 | gpio38 | Input, REMOTE_RECEIVER, with 5k pull up
 f12 | J3.12 | gpio1  | VBAT_read 
 f13 | J3.13 | gpio2  | 
 f14 | J3.14 | gpio3  |

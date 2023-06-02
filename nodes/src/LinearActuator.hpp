@@ -10,7 +10,7 @@ class LinearActuator
         LinearActuator(uint8_t _pulse_pin, uint8_t _limit_pin, MD10C* motor_ptr);
         void goto_position(long position);
         long get_position();
-        bool save_position();
+        void save_position();
         int get_speed();
         bool get_limit();
         String get_status();

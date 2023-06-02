@@ -3,6 +3,7 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <MacroLogger.h>
 
 #include "renogyrover.hpp"
 #include "PeriodicTimer.hpp"
@@ -27,9 +28,8 @@
 
 #define VBAT 1  // connected to Vbatt through a 1/2 divider network
 
-#define GATE_LOCK 2
-#define DRIVEWAY_RECEIVER 39
-#define REMOTE_RECEIVER 38
+#define GATE_LOCK 42
+#define REMOTE_RECEIVER 39
 
 #define MD10C_PWM_PIN 46
 #define MD10C_DIR_PIN 45
@@ -57,24 +57,15 @@ void setup()
 
     // Console
     Serial.begin(115200);
-    //while (!Serial) delay(10);
-    //while (!Serial.available()) delay(10);
-    //Serial.println("Press key to start");
-    //char ch = Serial.read();
-    Serial.println("driveway_gate");
+    Logger::set_level(Logger::Level::TRACE);
+    Logger::info("driveway_gate");
     pinMode(VBAT, INPUT);
-
-    pinMode(GATE_LOCK, OUTPUT);
-    digitalWrite(GATE_LOCK, LOW);
-
-    pinMode(DRIVEWAY_RECEIVER, INPUT);
-    pinMode(REMOTE_RECEIVER, INPUT_PULLUP);
 
     pinMode(USER_BUTTON1, INPUT);
 
     motor = new MD10C(MD10C_PWM_PIN, MD10C_DIR_PIN, MD10C_PWM_CHAN);
     actuator = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
-    gate = new Gate(actuator);
+    gate = new Gate(actuator, GATE_LOCK);
     
     Serial1.begin(9600, SERIAL_8N1, RENOGY_TXD, RENOGY_RXD);
     scc = new RenogyRover(Serial1);

@@ -1,4 +1,5 @@
 // -*- coding: utf-8 -*-
+#include "MacroLogger.h"
 #include "driveway_gate.hpp"
 #include "utils.hpp"
 
@@ -6,16 +7,14 @@
 void send_msg(uint8_t dest, String& msg)
 {
     if (node->send_msg(dest, msg))
-        Serial.println(runtime() + " Tx to:" + String(dest) + ", msg:" + msg);
-    else
-        Serial.println(runtime() + " Transmitter busy");
+        Logger::trace("to:%d, %s", dest, msg.c_str());
 }
 
 
 void send_gate_status(uint8_t dest)
 {
     // LiIon pack directly connected to feather
-    float vbat = analogRead(VBAT) * 2 * 3.3 / 1024;
+    float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
 
     String msg;
     msg += String("gp:") + String(long(gate->get_position()));
@@ -24,10 +23,21 @@ void send_gate_status(uint8_t dest)
     msg += String(",rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String (int(uptime()));
-    msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
-    msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
-    int rc = scc->battery_voltage() < 100;
-    msg += String(",rc:") + String(rc);
+    msg += String(",rr:") + String (!digitalRead(REMOTE_RECEIVER));
+    float bv = scc->battery_voltage();
+    if (bv < 100)
+    {
+        msg += String(",bv:") + String(bv);
+        msg += String(",bc:") + String(scc->battery_current());
+        msg += String(",bp:") + String(scc->battery_percentage());
+        msg += String(",ct:") + String(scc->controller_temperature());
+        msg += String(",lp:") + String(scc->load_power());
+        msg += String(",lo:") + String(scc->load_on());
+        msg += String(",cp:") + String(scc->charging_power());
+        msg += String(",cs:") + String(scc->charging_state());
+        msg += String(",cf:") + String(scc->controller_fault(), HEX);
+        msg += String(",dl:") + String(scc->discharging_limit_voltage());
+    }
     send_msg(dest, msg);
 }
 
@@ -37,41 +47,18 @@ void send_position_update(uint8_t dest)
     String msg;
     msg += String("gp:") + String(long(gate->get_position()));
     msg += String(",ap:") + String(actuator->get_position());
-    msg += String(",dr:") + String (digitalRead(DRIVEWAY_RECEIVER));
-    msg += String(",rr:") + String (digitalRead(REMOTE_RECEIVER));
-    send_msg(dest, msg);
-}
-
-void send_scc_status(uint8_t dest)
-{
-    float bv = scc->battery_voltage();
-    if (bv > 100)
-        return;
-
-    String msg;
-    msg = String("bv:") + String(bv);
-    msg += String(",bc:") + String(scc->battery_current());
-    msg += String(",bp:") + String(scc->battery_percentage());
-    msg += String(",ct:") + String(scc->controller_temperature());
-    msg += String(",lp:") + String(scc->load_power());
-    msg += String(",lo:") + String(scc->load_on());
-    msg += String(",cp:") + String(scc->charging_power());
-    msg += String(",cs:") + String(scc->charging_state());
-    msg += String(",cf:") + String(scc->controller_fault(), HEX);
-    msg += String(",dl:") + String(scc->discharging_limit_voltage());
+    msg += String(",rr:") + String (!digitalRead(REMOTE_RECEIVER));
     send_msg(dest, msg);
 }
 
 
 void loop()
 {
-    static PeriodicTimer gate_timer(10000000);
-
     String msg;
     byte sender;
     if (node->get_message(msg, sender))
     {
-        Serial.println(runtime() + " Rx: " + msg);
+        Logger::info("Rx:%s", msg);
         if (msg=="GO")
             gate->goto_position(100);
         else if (msg=="GC")
@@ -90,44 +77,31 @@ void loop()
             scc->load_on(1);
         else if (msg=="R0")
             scc->load_on(0);
-        else if (msg=="S1")
+        else if (msg=="SS")
             send_gate_status(0);
-        else if (msg=="S2")
-            send_scc_status(0);
     }
 
-    bool open_gate = digitalRead(DRIVEWAY_RECEIVER) | !digitalRead(REMOTE_RECEIVER);
-    if (open_gate)
+    // yeah, its an active low signal
+    uint8_t remote = !digitalRead(REMOTE_RECEIVER);
+    if (remote)
+        gate->open(90);
+
+    if (gate->update() || remote)
         send_position_update(0);
 
     static PeriodicTimer update_timer(60000);
     if (update_timer.time())
         send_gate_status(0);
 
-    static PeriodicTimer ssc_update_timer(60000);
-    if (ssc_update_timer.time())
-        send_scc_status(0);
-
-    if (gate->get_speed() == 0)
-        gate_timer.set_interval(9999999);
-    else
-        gate_timer.set_interval(200);
-    if (gate_timer.time())
-        send_position_update(0);
-
     if (millis() > 2000)
     {
         if (!digitalRead(USER_BUTTON1))
         {
-            actuator->goto_position(0);
-            Serial.println(runtime() + " retract arm");
             delay(400);
         }
     }
 
-    if (actuator->save_position())
-        Serial.println(runtime() + " position saved");
-
+    actuator->save_position();
 
     // this takes about 32 ms.
     display->firstPage();
