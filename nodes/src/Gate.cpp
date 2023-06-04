@@ -115,6 +115,8 @@ bool Gate::update()
         Logger::trace("lock");
     }
 
+    actuator->save_position();
+
     long t = dt(last_update_time);
     bool pos_update = last_actuator_position != actuator->get_position();
     last_actuator_position = actuator->get_position();

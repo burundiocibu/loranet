@@ -17,9 +17,7 @@ void send_gate_status(uint8_t dest)
     float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
 
     String msg;
-    msg += String("gp:") + String(long(gate->get_position()));
-    msg += String(",ap:") + String(actuator->get_position());
-    msg += String(",v1:") + String(vbat);
+    msg += String("v1:") + String(vbat);
     msg += String(",rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String (int(uptime()));
@@ -59,11 +57,7 @@ void loop()
     if (node->get_message(msg, sender))
     {
         Logger::info("Rx:%s", msg);
-        if (msg=="GO")
-            gate->goto_position(100);
-        else if (msg=="GC")
-            gate->goto_position(0);
-        else if (msg=="GS")
+        if (msg=="GS")
             gate->stop();
         else if (msg.startsWith("GP"))
             gate->goto_position(msg.substring(2).toInt());
@@ -71,6 +65,8 @@ void loop()
             actuator->goto_position(actuator->get_position()-10);
         else if (msg=="G-")
             actuator->goto_position(actuator->get_position()+10);
+        else if (msg.startsWith("AP"))
+            actuator->goto_position(msg.substring(2).toInt());
         else if (msg=="GSCP")
             gate->set_closed_position(actuator->get_position());
         else if (msg=="R1")
@@ -79,6 +75,8 @@ void loop()
             scc->load_on(0);
         else if (msg=="SS")
             send_gate_status(0);
+        else if (msg.startsWith("LOCK"))
+            digitalWrite(GATE_LOCK, msg.substring(4).toInt());
     }
 
     // yeah, its an active low signal
@@ -101,7 +99,6 @@ void loop()
         }
     }
 
-    actuator->save_position();
 
     // this takes about 32 ms.
     display->firstPage();

@@ -142,6 +142,8 @@ GPIO18 | OLED_SCL
 Actuator is a MM371W, made by MightyMule.
 Linear actuator has a 12VDC brushed motor. Motor has an inrush current of 16A and a no-load current of 1.6A.
 Motor has what appears to be a hall effect sensor board that outputs three levels.
+White is signal, needs to be pulled high
+Green is ground.
 2 V when limit switch is triggered
 toggles between 3 and 4.2V when motor is running
 pulses are about 3 ms apart when motor is at full speed. closer starting/stopping

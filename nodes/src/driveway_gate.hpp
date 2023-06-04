@@ -80,6 +80,5 @@ void setup()
     do {
         display->setCursor(0, 12);
         display->print(F("gate mgr"));
-
     } while ( display->nextPage() );
 }

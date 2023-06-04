@@ -18,12 +18,12 @@ class LinearActuator
     private:
         static uint8_t pulse_pin;
         static uint8_t limit_pin;
-        static long current_position;
-        static long target_position;
-        static bool limit;          // limit switch active
-        static uint32_t start_time; // time when motor started moving
+        volatile static long current_position;
+        volatile static long target_position;
+        volatile static bool limit;          // limit switch active
+        volatile static uint32_t start_time; // time when motor started moving
         static MD10C* motor;
-        static bool dirty_position; // to indicate we got a valid stored position
+        volatile static bool dirty_position; // to indicate we got a valid stored position
 
         static void limit_isr();
         static void pulse_isr();

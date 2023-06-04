@@ -7,12 +7,12 @@
 
 uint8_t LinearActuator::pulse_pin = 0;
 uint8_t LinearActuator::limit_pin = 0;
-long LinearActuator::current_position = 0;
-long LinearActuator::target_position = 0;
-bool LinearActuator::limit = false;
-uint32_t LinearActuator::start_time = 0;
+volatile long LinearActuator::current_position = 0;
+volatile long LinearActuator::target_position = 0;
+volatile bool LinearActuator::limit = false;
+volatile uint32_t LinearActuator::start_time = 0;
 MD10C* LinearActuator::motor;
-bool LinearActuator::dirty_position = false;
+volatile bool LinearActuator::dirty_position = false;
 
 Preferences preferences;
 
@@ -134,7 +134,7 @@ void LinearActuator::save_position()
     preferences.putInt("position", current_position);
     preferences.end();
     dirty_position = false;
-    Logger::info("position saved");
+    Logger::info("position saved %d", current_position);
 }
 
 String LinearActuator::get_status()
