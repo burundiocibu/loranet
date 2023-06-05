@@ -184,3 +184,15 @@ class Button(BaseEntity):
         del self.config.device_class
         del self.config.state_topic
         self.publish_discovery()
+
+
+class Number(BaseEntity):
+    def __init__(self, name, device, mqtt_client, min=0, max=1000, step=1):
+        super().__init__(name, "number", "number", device, mqtt_client)
+        self.config.command_topic = f"{self.topic}/command"
+        self.config.acty_t = f"{self.topic}/status"
+        self.config.min = min
+        self.config.max = max
+        self.config.step = step
+        del self.config.device_class
+        self.publish_discovery()

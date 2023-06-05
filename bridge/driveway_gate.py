@@ -22,6 +22,10 @@ class DrivewayGate(entities.LoRaNode):
         self.mqtt_client.subscribe(self.gate.config.set_position_topic)
         self.actuator_position = entities.Sensor(f"{self.name} Actuator Position", self.device_config, mqtt_client, "mm")
 
+        self.set_actuator_position = entities.Number(f"{self.name} Set Actuator Position", self.device_config, mqtt_client, 0, 5000, 1)
+        self.mqtt_client.message_callback_add(self.set_actuator_position.config.command_topic, self.set_actuator_position_mqrx)
+        self.mqtt_client.subscribe(self.set_actuator_position.config.command_topic)
+
         self.gate_jog_open = entities.Button(f"{self.name} Jog Open", self.device_config, self.mqtt_client, icon="mdi:gate-open")
         self.mqtt_client.message_callback_add(self.gate_jog_open.config.command_topic, self.gate_jog_open_mqrx)
         self.mqtt_client.subscribe(self.gate_jog_open.config.command_topic)
@@ -55,9 +59,11 @@ class DrivewayGate(entities.LoRaNode):
         self.scc_charge_state = entities.Sensor(f"{self.name} SCC Charge State", self.device_config, mqtt_client)
         self.scc_temperature = entities.Temperature(f"{self.name} SCC Temperature", self.device_config, mqtt_client)
 
+        self.update_state()
+
     def update_state(self):
         logger.info("Requesting state")
-        if not self.radio.tx(self.id, "?"):
+        if not self.radio.tx(self.id, "SS"):
             return
 
     def receive_status(self, packet):
@@ -107,7 +113,7 @@ class DrivewayGate(entities.LoRaNode):
                 self.scc_load_enable.publish_state()
 
             if 'ap' in msg:
-                self.actuator_position.publish_state(round(float(msg["ap"])*.213,2))
+                self.actuator_position.publish_state(round(float(msg["ap"])*.1737,2))
 
             if 'gp' in msg:
                 self.gate.position = int(msg["gp"])
@@ -124,10 +130,10 @@ class DrivewayGate(entities.LoRaNode):
         if message.topic == self.gate.config.command_topic:
             if message.payload == b'OPEN':
                 logger.info("Opening")
-                self.radio.tx(self.id, "GO")
+                self.radio.tx(self.id, "GP100")
             elif message.payload == b'CLOSE':
                 logger.info("Closing")
-                self.radio.tx(self.id, "GC")
+                self.radio.tx(self.id, "GP0")
             elif message.payload == b'STOP':
                 logger.info("Stopping")
                 self.radio.tx(self.id, "GS")
@@ -144,6 +150,12 @@ class DrivewayGate(entities.LoRaNode):
     def gate_jog_close_mqrx(self, mqtt_client, obj, message):
         logger.info(f"jog close")
         self.radio.tx(self.id, "G-")
+        return
+    
+    def set_actuator_position_mqrx(self, mqtt_client, obj, message):
+        pos = int(int(message.payload) * 5.756)
+        logger.info(f"set_actuator position {message.payload} {pos}")
+        self.radio.tx(self.id, f"AP{pos}")
         return
 
     def gate_set_closed_position_mqrx(self, mqtt_client, obj, message):
