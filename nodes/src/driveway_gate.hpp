@@ -57,7 +57,7 @@ void setup()
 
     // Console
     Serial.begin(115200);
-    Logger::set_level(Logger::Level::TRACE);
+    Logger::set_level(Logger::Level::INFO);
     Logger::info("driveway_gate");
     pinMode(VBAT, INPUT);
 
