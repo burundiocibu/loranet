@@ -81,7 +81,10 @@ void LinearActuator::pulse_isr()
 
     int err = target_position - current_position;
     if (err == 0)
+    {
         motor->stop();
+        stopped = true;
+    }
 
     if (stopped)
         return;
