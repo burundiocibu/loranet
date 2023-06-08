@@ -16,3 +16,24 @@ uint16_t RenogyRover::read_register(uint16_t reg)
         return resp;
     }
 }
+
+
+String RenogyRover::status()
+{
+    String msg;
+    float bv = battery_voltage();
+    if (bv < 100)
+    {
+        msg += String("bv:") + String(bv);
+        msg += String(",bc:") + String(battery_current());
+        msg += String(",bp:") + String(battery_percentage());
+        msg += String(",ct:") + String(controller_temperature());
+        msg += String(",lp:") + String(load_power());
+        msg += String(",lo:") + String(load_on());
+        msg += String(",cp:") + String(charging_power());
+        msg += String(",cs:") + String(charging_state());
+        msg += String(",cf:") + String(controller_fault(), HEX);
+        msg += String(",dl:") + String(discharging_limit_voltage());
+    }
+    return msg;
+}
