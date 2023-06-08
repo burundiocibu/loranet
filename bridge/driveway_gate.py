@@ -59,16 +59,20 @@ class DrivewayGate(entities.LoRaNode):
         self.scc_charge_state = entities.Sensor(f"{self.name} SCC Charge State", self.device_config, mqtt_client)
         self.scc_temperature = entities.Temperature(f"{self.name} SCC Temperature", self.device_config, mqtt_client)
 
-        self.update_state()
+        self.mm_per_count = 0.25
+        self.last_state_update = time.monotonic()
 
     def update_state(self):
-        logger.info("Requesting state")
-        if not self.radio.tx(self.id, "SS"):
-            return
+        if time.monotonic() - self.last_state_update > 15:
+            logger.debug("Requesting state")
+            self.radio.tx(self.id, "SS")
+            self.last_state_update += 5
+
 
     def receive_status(self, packet):
         try:
             msg = self.radio.decode_msg(packet)
+            self.last_state_update = time.monotonic()
             self.rssi.publish_state(self.radio.rfm9x.last_rssi)
             if 'v1' in msg:
                 self.esp_battery.publish_state(int(100 * (float(msg["v1"]) - 3.4) / (4.19 - 3.4)))
@@ -113,7 +117,7 @@ class DrivewayGate(entities.LoRaNode):
                 self.scc_load_enable.publish_state()
 
             if 'ap' in msg:
-                self.actuator_position.publish_state(round(float(msg["ap"])*.1737,2))
+                self.actuator_position.publish_state(round(float(msg["ap"])*self.mm_per_count,2))
 
             if 'gp' in msg:
                 self.gate.position = int(msg["gp"])
@@ -153,7 +157,7 @@ class DrivewayGate(entities.LoRaNode):
         return
     
     def set_actuator_position_mqrx(self, mqtt_client, obj, message):
-        pos = int(int(message.payload) * 5.756)
+        pos = int(int(message.payload)/self.mm_per_count)
         logger.info(f"set_actuator position {message.payload} {pos}")
         self.radio.tx(self.id, f"AP{pos}")
         return

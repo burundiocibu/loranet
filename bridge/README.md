@@ -22,7 +22,7 @@ reboot
 cd loranet/bridge
 python3 -m venv .venv --system-site-packages
 . .venv/bin/activate
-pip install paho-mqtt prometheus_client adafruit-circuitpython-ssd1306 \ adafruit-circuitpython-framebuf adafruit-circuitpython-rfm9x
+pip install -r requirements.txt
 
 
 ### systemd unit

@@ -82,15 +82,18 @@ def main():
     dev_node = LPGauge("Dev Node", 4, radio, mqtt_client)
 
     while True:
-        #loranet_bridge.update_state()
-        sender,packet = radio.listen()
-        if packet is None:
-            time.sleep(0.1)
-            continue
-        logger.info(f"Rx from:{sender}, msg:{packet}")
-        if sender == 2:   driveway_gate.receive_status(packet)
-        elif sender == 3: lp_gauge.receive_status(packet)
-        elif sender == 4: dev_node.receive_status(packet)
+        msg = radio.rx(timeout=0.1)
+        if msg is not None:
+            sender = msg[1]
+            packet = msg[4:].decode()
+            logger.info(f"Rx from:{sender}, msg:{packet}")
+            if sender == 2:   driveway_gate.receive_status(packet)
+            elif sender == 3: lp_gauge.receive_status(packet)
+            elif sender == 4: dev_node.receive_status(packet)
+            logger.debug(f"Done processing message from {sender}")
+        else:
+            driveway_gate.update_state() 
+
         if time_to_die:
             return;
 

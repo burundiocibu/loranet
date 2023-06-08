@@ -6,6 +6,7 @@
 import logging
 import threading
 import time
+from typing import Optional
 
 import busio
 from digitalio import DigitalInOut, Direction, Pull
@@ -44,7 +45,7 @@ class LoRaBase():
         self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
         self.tx_power = 20
         self.rfm9x.tx_power = self.tx_power
-        self.rfm9x.node = 0
+        self.rfm9x.node =  0
         self.rfm9x.flags = 0 # default is 0
         self.rfm9x.preamble_length = 12
         self.tx_stats = {'count':0, 'err':0 }
@@ -57,64 +58,38 @@ class LoRaBase():
 
     def tx(self, dest, msg:str) -> bool:
         with self.rfm9x_lock:
-            logger.debug("Start Tx")
             t0 = time.perf_counter()
             self.rfm9x.destination = dest #  default is 255 (broadcast)
             self.tx_stats['count'] += 1
-            if not self.rfm9x.send(bytes(msg, "utf-8")):
+            if not self.rfm9x.send(bytes(msg, "utf-8"), keep_listening=True):
                 self.tx_stats['err'] += 1
-                self.print_stats("noack")
+                logger.debug(f"tx err:{self.tx_stats}")
                 return False
             self.rfm9x.listen()
             dt = round(1000 * (time.perf_counter() - t0), 1)
-            self.tx_stats['rtt'] = dt
-            self.tx_stats['rssi'] = self.rfm9x.last_rssi
-            self.tx_stats['snr'] = self.rfm9x.last_snr
-            self.tx_stats['txpwr'] = self.rfm9x.tx_power
-            self.print_stats(f"tx ok")
+            self.tx_stats['tx_dt'] = dt
+            logger.debug(f"tx ok:{self.tx_stats}")
             return True
 
-    def rx(self, sender, timeout:float = 1.0):
+    def rx(self, timeout:float = 0.75) -> Optional[bytearray]:
         with self.rfm9x_lock:
-            logger.debug("Start Rx")
-            t0 = time.perf_counter()
             self.rfm9x.receive_timeout = timeout # seconds
-            self.rfm9x.destination = sender
-            packet = self.rfm9x.receive(with_header=True)
-            self.rx_stats['rtt'] = round(1000 * (time.perf_counter() - t0),0)
-            sender = packet[1]
-            self.msg = packet[4:]
+            packet = self.rfm9x.receive(with_header=True, timeout = timeout)
             if packet is None:
-                self.rx_stats['err'] += 1
-                self.print_stats('timeout')
                 return None
-            self.rx_stats['count'] += 1
-            logger.debug(f"Rx from:{sender}, msg:{self.msg}")
-            return packet
+            else:
+                self.rx_stats['count'] += 1
+                logger.debug(f"rx ok:{self.rx_stats}")
+                return packet
 
     # note this has to be seperate since it can't ack and broadcast
     def broadcast(self, msg:str) -> None:
         self.rfm9x.destination = 255 #  default is 255 (broadcast)
         self.rfm9x.send(bytes(msg, "utf-8"))
 
-    # note this has to be seperate since it can't ack and broadcast
-    def listen(self, timeout:float = 0.5):
-        with self.rfm9x_lock:
-            t0 = time.perf_counter()
-            self.rfm9x.listen()
-            self.rfm9x.destination = 0 #  default is 255 (broadcast)
-            self.rfm9x.receive_timeout = timeout # seconds
-            packet = self.rfm9x.receive(with_header=True, keep_listening=True)
-            dt = round(1000 * (time.perf_counter() - t0), 0)
-            if packet is not None:
-                logger.debug(f"Rx rssi:{self.rfm9x.last_rssi}, snr:{self.rfm9x.last_snr}")
-                return int(packet[1]), packet[4:]
-            else:
-                return None, None
-
     def decode_msg(self, msg:str) -> dict:
         d = {}
-        for s in msg.decode().split(","):
+        for s in msg.split(","):
             if len(s):
                 n,v = s.split(':')
                 d[n] = v
