@@ -78,6 +78,8 @@ void LinearActuator::pulse_isr()
     dirty_position = true;
     
     limit = digitalRead(limit_pin);
+    if (limit)
+        target_position = current_position = 0;
 
     int err = target_position - current_position;
     if (err == 0)

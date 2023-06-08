@@ -113,6 +113,8 @@ bool LoraNode::get_message(String& msg, byte& sender)
         radio.finishTransmit();
         radio.startReceive();
         radio_state = state_rx;
+        Logger::trace("state_tx_complete");
+
     }
     else if (radio_state == state_rx_complete)
     {
@@ -131,6 +133,7 @@ bool LoraNode::get_message(String& msg, byte& sender)
         snr = radio.getSNR();
         if (state == RADIOLIB_ERR_NONE)
             return true;
+        Logger::trace("state_rx_complete");
     }
     return false;
 }
@@ -149,14 +152,14 @@ bool LoraNode::send_msg(uint8_t dest, const String& msg)
     radio_state = state_tx;
     radio.startTransmit(buff, sizeof(buff));
     tx_start_time = millis();
-    Logger::trace("to:%d, %s", dest, msg.c_str());
+    Logger::trace("tx: to:%d, %s", dest, msg.c_str());
     return true;
 }
 
 
 String LoraNode::status()
 {
-    String msg = " state:";
+    String msg = "state:";
     switch(radio_state)
     {
         case state_idle:        msg += "idle"; break;

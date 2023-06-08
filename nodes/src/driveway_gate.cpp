@@ -29,7 +29,7 @@ void loop()
     byte sender;
     if (node->get_message(msg, sender))
     {
-        Logger::info("Rx:%s", msg);
+        Logger::info("Rx:from:%d, %s", sender, msg);
         if (msg=="GS")
             gate->stop();
         else if (msg.startsWith("GP"))
@@ -45,7 +45,7 @@ void loop()
         else if (msg.startsWith("R"))
             scc->load_on(msg.substring(1).toInt());
         else if (msg=="SS")
-            node->send_msg(0, status());
+            node->send_msg(sender, status());
         else if (msg.startsWith("LOCK"))
             digitalWrite(GATE_LOCK, msg.substring(4).toInt());
     }
@@ -58,7 +58,7 @@ void loop()
     if (gate->update() || remote)
         node->send_msg(0, gate->status());
 
-    static PeriodicTimer update_timer(60000);
+    static PeriodicTimer update_timer(300 * 1000);
     if (update_timer.time())
         node->send_msg(0, status());
 
