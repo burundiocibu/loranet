@@ -20,13 +20,12 @@ class Gate
         bool update();
         bool set_closed_position(long position);
         long get_closed_position();
+        String status();
 
     private:
         LinearActuator* actuator;
         Preferences gate_prefs;
         enum state_enum {state_closed, state_opening, state_open, state_closing} state, last_state;
-        long last_actuator_position;
-        uint32_t last_update_time;   // when the last update was broadcast
         uint32_t last_open;   // When we last started an open
         double auto_close_time;  // when we should auto close the gate
         long closed_position;

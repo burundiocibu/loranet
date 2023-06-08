@@ -4,16 +4,9 @@
 #include "utils.hpp"
 
 
-void send_msg(uint8_t dest, String& msg)
+String status()
 {
-    if (node->send_msg(dest, msg))
-        Logger::trace("to:%d, %s", dest, msg.c_str());
-}
-
-
-void send_gate_status(uint8_t dest)
-{
-    // LiIon pack directly connected to feather
+    // LiIon pack directly connected to processor
     float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
 
     String msg;
@@ -22,36 +15,16 @@ void send_gate_status(uint8_t dest)
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String (int(uptime()));
     msg += String(",rr:") + String (!digitalRead(REMOTE_RECEIVER));
-    float bv = scc->battery_voltage();
-    if (bv < 100)
-    {
-        msg += String(",bv:") + String(bv);
-        msg += String(",bc:") + String(scc->battery_current());
-        msg += String(",bp:") + String(scc->battery_percentage());
-        msg += String(",ct:") + String(scc->controller_temperature());
-        msg += String(",lp:") + String(scc->load_power());
-        msg += String(",lo:") + String(scc->load_on());
-        msg += String(",cp:") + String(scc->charging_power());
-        msg += String(",cs:") + String(scc->charging_state());
-        msg += String(",cf:") + String(scc->controller_fault(), HEX);
-        msg += String(",dl:") + String(scc->discharging_limit_voltage());
-    }
-    send_msg(dest, msg);
-}
-
-
-void send_position_update(uint8_t dest)
-{
-    String msg;
-    msg += String("gp:") + String(long(gate->get_position()));
-    msg += String(",ap:") + String(actuator->get_position());
-    msg += String(",rr:") + String (!digitalRead(REMOTE_RECEIVER));
-    send_msg(dest, msg);
+    String m2  = scc->status();
+    if (m2.length())
+        msg += String(",") + m2;
+    return msg;
 }
 
 
 void loop()
 {
+    Logger::set_level(Logger::Level::TRACE);
     String msg;
     byte sender;
     if (node->get_message(msg, sender))
@@ -69,12 +42,10 @@ void loop()
             actuator->goto_position(msg.substring(2).toInt());
         else if (msg=="GSCP")
             gate->set_closed_position(actuator->get_position());
-        else if (msg=="R1")
-            scc->load_on(1);
-        else if (msg=="R0")
-            scc->load_on(0);
+        else if (msg.startsWith("R"))
+            scc->load_on(msg.substring(1).toInt());
         else if (msg=="SS")
-            send_gate_status(0);
+            node->send_msg(0, status());
         else if (msg.startsWith("LOCK"))
             digitalWrite(GATE_LOCK, msg.substring(4).toInt());
     }
@@ -85,20 +56,20 @@ void loop()
         gate->open(90);
 
     if (gate->update() || remote)
-        send_position_update(0);
+        node->send_msg(0, gate->status());
 
     static PeriodicTimer update_timer(60000);
     if (update_timer.time())
-        send_gate_status(0);
+        node->send_msg(0, status());
 
     if (millis() > 2000)
     {
         if (!digitalRead(USER_BUTTON1))
         {
-            delay(400);
+            gate->goto_position(0);
+            delay(400); 
         }
     }
-
 
     // this takes about 32 ms.
     display->firstPage();

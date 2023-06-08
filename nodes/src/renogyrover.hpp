@@ -43,6 +43,8 @@ class RenogyRover
         uint16_t battery_type() {return read_register(0xe004); };
         float discharging_limit_voltage() {return 0.1 * read_register(0xe00e); };
 
+        String status();
+
     private:
         ModbusMaster node;
         uint16_t read_register(uint16_t reg);

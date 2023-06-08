@@ -1,4 +1,5 @@
 // -*- coding: utf-8 -*-
+#include <MacroLogger.h>
 #include "LoraNode.hpp"
 #include "utils.hpp"
 
@@ -148,6 +149,7 @@ bool LoraNode::send_msg(uint8_t dest, const String& msg)
     radio_state = state_tx;
     radio.startTransmit(buff, sizeof(buff));
     tx_start_time = millis();
+    Logger::trace("to:%d, %s", dest, msg.c_str());
     return true;
 }
 

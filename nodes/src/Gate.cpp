@@ -7,8 +7,6 @@
 Gate::Gate(LinearActuator* la_ptr, uint8_t lock_pin) : 
     actuator(la_ptr),
     auto_close_time(0),
-    last_update_time(0),
-    last_actuator_position(la_ptr->get_position()),
     lock_pin(lock_pin),
     last_open(0)
 {
@@ -46,7 +44,7 @@ float Gate::get_position()
 /// @brief stiops gate motion where it is
 void Gate::stop()
 {
-    actuator->goto_position(actuator->get_position());
+    actuator->stop();
 };
 
 
@@ -116,16 +114,29 @@ bool Gate::update()
     }
 
     actuator->save_position();
+    actuator->log_status();
 
+    static uint32_t last_update_time = 0;
     long t = dt(last_update_time);
-    bool pos_update = last_actuator_position != actuator->get_position();
-    last_actuator_position = actuator->get_position();
-    if ( t > 60000 || (pos_update && t > 200))
+    static long last_pos = 0;
+    long current_pos = actuator->get_position();
+    if ( t > 60000 || (current_pos != last_pos && t > 150))
     {
+        last_pos = current_pos;
         last_update_time = millis();
         return true;
     }
     else
         return false;
-//    return ;
+}
+
+
+String Gate::status()
+{
+    String msg;
+    msg += String("gp:") + String(long(get_position()));
+    msg += String(",ap:") + String(actuator->get_position());
+    msg += String(",gcp:") + String(get_closed_position());
+    msg += (String(",st:") + String(actuator->get_stopped()));
+    return msg;
 }
