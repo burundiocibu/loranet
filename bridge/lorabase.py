@@ -12,7 +12,8 @@ import busio
 from digitalio import DigitalInOut, Direction, Pull
 import board
 import adafruit_ssd1306
-import adafruit_rfm9x
+from adafruit_rfm9x import RFM9x
+#from jcl_rfm9x import RFM9x
 
 
 # Create the I2C interface.
@@ -42,13 +43,13 @@ class LoRaBase():
         #IRQ  = board.DIO0 # GPIO22
 
         self.spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
-        self.rfm9x = adafruit_rfm9x.RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
+        self.rfm9x = RFM9x(self.spi, CS, RESET, 915.0) # 915 Mhz
         self.tx_power = 20
         self.rfm9x.tx_power = self.tx_power
         self.rfm9x.node =  0
         self.rfm9x.flags = 0 # default is 0
         self.rfm9x.preamble_length = 12
-        self.tx_stats = {'count':0, 'err':0 }
+        self.tx_stats = {'count':0}
         self.rx_stats = {'count':0, 'err':0 }
         self.rfm9x_lock = threading.Lock()
         self.msg = None # most recent received message
@@ -71,16 +72,21 @@ class LoRaBase():
             logger.debug(f"tx ok:{self.tx_stats}")
             return True
 
-    def rx(self, timeout:float = 0.75) -> Optional[bytearray]:
+    def rx(self):
         with self.rfm9x_lock:
-            self.rfm9x.receive_timeout = timeout # seconds
-            packet = self.rfm9x.receive(with_header=True, timeout = timeout)
-            if packet is None:
-                return None
+            # If receive is called and the the message times out in the middle
+            # of the message, it will idle the radio stopping receiption of a message
+            if self.rfm9x.rx_done():
+                packet = self.rfm9x.receive(with_header=True, keep_listening = True)
+                if packet is None:
+                    return None
+                else:
+                    self.rx_stats['count'] += 1
+                    logger.debug(f"rx ok:{self.rx_stats}")
+                    return packet
             else:
-                self.rx_stats['count'] += 1
-                logger.debug(f"rx ok:{self.rx_stats}")
-                return packet
+                time.sleep(0.01);
+                return None;
 
     # note this has to be seperate since it can't ack and broadcast
     def broadcast(self, msg:str) -> None:

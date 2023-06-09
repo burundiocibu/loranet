@@ -64,7 +64,7 @@ class DrivewayGate(entities.LoRaNode):
 
     def update_state(self):
         if time.monotonic() - self.last_state_update > 15:
-            logger.debug("Requesting state")
+            logger.info("Requesting state")
             self.radio.tx(self.id, "SS")
             self.last_state_update += 5
 

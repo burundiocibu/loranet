@@ -82,7 +82,7 @@ def main():
     dev_node = LPGauge("Dev Node", 4, radio, mqtt_client)
 
     while True:
-        msg = radio.rx(timeout=0.1)
+        msg = radio.rx()
         if msg is not None:
             sender = msg[1]
             packet = msg[4:].decode()
