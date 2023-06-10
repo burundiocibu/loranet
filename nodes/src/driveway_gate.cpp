@@ -24,12 +24,13 @@ String status()
 
 void loop()
 {
-    Logger::set_level(Logger::Level::TRACE);
+    Logger::set_level(Logger::Level::INFO);
     String msg;
     byte sender;
     if (node->get_message(msg, sender))
     {
         Logger::info("Rx:from:%d, %s", sender, msg);
+        Logger::trace("On core: %d", xPortGetCoreID());
         if (msg=="GS")
             gate->stop();
         else if (msg.startsWith("GP"))
@@ -43,9 +44,13 @@ void loop()
         else if (msg=="GSCP")
             gate->set_closed_position(actuator->get_position());
         else if (msg.startsWith("R"))
+        {
             scc->load_on(msg.substring(1).toInt());
+            delay(200);
+            node->send_msg(sender, scc->status());
+        }
         else if (msg=="SS")
-            node->send_msg(sender, status());
+                node->send_msg(sender, status());
         else if (msg.startsWith("LOCK"))
             digitalWrite(GATE_LOCK, msg.substring(4).toInt());
     }
@@ -74,8 +79,6 @@ void loop()
     // this takes about 32 ms.
     display->firstPage();
     do {
-        display->setCursor(0, 11);
-        display->print(F("gate mgr"));
         display->setCursor(0, 24);
         display->print(F("ap "));
         display->setCursor(14, 24);
