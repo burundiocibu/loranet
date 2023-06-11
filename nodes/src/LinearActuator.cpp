@@ -15,9 +15,9 @@ volatile bool LinearActuator::limit = false;
 volatile uint32_t LinearActuator::start_time = 0;
 MD10C* LinearActuator::motor;
 volatile bool LinearActuator::dirty_position = false;
-volatile bool LinearActuator::stopped = true;
 volatile uint32_t LinearActuator::last_pcnt = 0;
 volatile uint32_t LinearActuator::last_pcnt_micros = 0;
+volatile int LinearActuator::last_open_error = 0;
 
 Preferences preferences;
 
@@ -75,8 +75,9 @@ LinearActuator::LinearActuator(uint8_t _pulse_pin, uint8_t _limit_pin, MD10C* mo
 // handle the timer expiring
 void LinearActuator::timer_isr()
 {
-    if (digitalRead(limit_pin) && target_position <= 0)
+    if (digitalRead(limit_pin) && motor->get_direction() < 0 && motor->get_speed())
     {
+        last_open_error = current_position;
         stop();
         target_position = current_position = 0;
     }
@@ -114,33 +115,29 @@ void LinearActuator::timer_isr()
     {   
         err = abs(err);
         speed = min(abs(2*err), 255); // start with the error as the speed
-        speed = min(int(dt(start_time)/4), speed); // clamp it to dt
+        speed = min(int(dt(start_time)/8), speed); // clamp it to dt
         speed = max(speed, 64); // don't go below 64/255
     }
     motor->set_speed(speed);
-
 }
 
 
 // handle the limit switch being triggered
 void LinearActuator::limit_isr()
 {
-    stop();
-    limit = true;
-    current_position = 0;
+    if (motor->get_direction() < 0 && motor->get_speed())
+    {
+        last_open_error = current_position;
+        stop();
+        limit = true;
+        current_position = 0;
+    }
 }
-
-
-long LinearActuator::get_position() { return current_position; }
-int LinearActuator::get_speed() { return motor->get_speed(); }
-bool LinearActuator::get_limit() { return limit = digitalRead(limit_pin); }
-bool LinearActuator::get_stopped() { return stopped; }
 
 
 void LinearActuator::stop()
 {
     motor->stop();
-    stopped = true;
     // yeah this could go into a pcnt isr...
     pcnt_counter_pause(PCNT_UNIT);             // pause pulse counter unit
     pcnt_counter_clear(PCNT_UNIT);             // zero and reset of pulse counter unit
@@ -166,7 +163,7 @@ void LinearActuator::goto_position(long position)
             save_position();
             return;
         }
-        position = -99; // Cause I can't get it to return to zero & be at the limit.
+        position = -10; // Cause I can't get it to return to zero & be at the limit.
     }
     else if (current_position > position)
         motor->set_direction(-1);
@@ -174,7 +171,6 @@ void LinearActuator::goto_position(long position)
         motor->set_direction(1);
     target_position = position;
     // this is just a kick to get it going.
-    stopped = false;
     motor->set_speed(64);
     start_time = millis();
 }
@@ -186,8 +182,8 @@ void LinearActuator::save_position()
         return;
     preferences.begin("LinearActuator");
     preferences.putInt("position", current_position);
-    preferences.end();
     dirty_position = false;
+    preferences.end();
     Logger::info("position saved %d", current_position);
 }
 
@@ -197,10 +193,9 @@ void LinearActuator::log_status()
     static int last_current_position = 0;
     if (current_position != last_current_position || motor->get_speed())
     {
-        Logger::info("ap:%ld, tp:%ld, ms:%d, md:%d, gl:%ld, st:%d", 
+        Logger::trace("ap:%ld, tp:%ld, ms:%d, md:%d, gl:%ld", 
             current_position, target_position, motor->get_speed(), motor->get_direction(),
-            get_limit(), stopped);
+            get_limit());
         last_current_position = current_position;
     }
 }
-

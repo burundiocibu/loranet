@@ -120,7 +120,7 @@ bool Gate::update()
     long t = dt(last_update_time);
     static long last_pos = 0;
     long current_pos = actuator->get_position();
-    if ( t > 60000 || (current_pos != last_pos && t > 150))
+    if ( t > 60000 || (current_pos != last_pos && t > 250))
     {
         last_pos = current_pos;
         last_update_time = millis();
@@ -137,6 +137,7 @@ String Gate::status()
     msg += String("gp:") + String(long(get_position()));
     msg += String(",ap:") + String(actuator->get_position());
     msg += String(",acp:") + String(get_closed_position());
-    msg += (String(",st:") + String(actuator->get_stopped()));
+    msg += (String(",al:") + String(actuator->get_limit()));
+    msg += (String(",loe:") + String(actuator->get_last_open_error()));
     return msg;
 }
