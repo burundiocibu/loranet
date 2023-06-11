@@ -46,13 +46,11 @@ void loop()
         else if (msg.startsWith("R"))
         {
             scc->load_on(msg.substring(1).toInt());
-            delay(200);
+            delay(200);  // it takes a bit for the scc to actuall do this
             node->send_msg(sender, scc->status());
         }
         else if (msg=="SS")
                 node->send_msg(sender, status());
-        else if (msg.startsWith("LOCK"))
-            digitalWrite(GATE_LOCK, msg.substring(4).toInt());
     }
 
     // yeah, its an active low signal
@@ -79,13 +77,13 @@ void loop()
     // this takes about 32 ms.
     display->firstPage();
     do {
-        display->setCursor(0, 24);
+        display->setCursor(0, 12);
         display->print(F("ap "));
-        display->setCursor(14, 24);
+        display->setCursor(14, 12);
         display->print(String(actuator->get_position()));
-        display->setCursor(0, 37);
+        display->setCursor(0, 25);
         display->print(F("gp "));
-        display->setCursor(14, 37);
+        display->setCursor(14, 25);
         display->print(String((int)gate->get_position()));
     } while ( display->nextPage() );
 }
