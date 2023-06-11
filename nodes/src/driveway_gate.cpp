@@ -46,7 +46,7 @@ void loop()
         else if (msg.startsWith("R"))
         {
             scc->load_on(msg.substring(1).toInt());
-            delay(200);  // it takes a bit for the scc to actuall do this
+            delay(500);  // it takes a bit for the scc to actuall do this
             node->send_msg(sender, scc->status());
         }
         else if (msg=="SS")
