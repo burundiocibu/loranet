@@ -42,7 +42,10 @@ void loop()
         else if (msg.startsWith("AP"))
             actuator->goto_position(msg.substring(2).toInt());
         else if (msg=="GSCP")
+        {
             gate->set_closed_position(actuator->get_position());
+            node->send_msg(0, gate->status());
+        }
         else if (msg.startsWith("R"))
         {
             scc->load_on(msg.substring(1).toInt());
