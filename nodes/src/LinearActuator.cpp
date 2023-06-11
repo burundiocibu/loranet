@@ -1,13 +1,14 @@
 // -*- coding: utf-8 -*-
 #include <MacroLogger.h>
 #include "Preferences.h"
+#include "driver/pcnt.h"
+
 #include "LinearActuator.hpp"
 #include "utils.hpp"
 
 
 uint8_t LinearActuator::pulse_pin = 0;
 uint8_t LinearActuator::limit_pin = 0;
-volatile long LinearActuator::noise_counter = 0;
 volatile long LinearActuator::current_position = 0;
 volatile long LinearActuator::target_position = 0;
 volatile bool LinearActuator::limit = false;
@@ -15,8 +16,12 @@ volatile uint32_t LinearActuator::start_time = 0;
 MD10C* LinearActuator::motor;
 volatile bool LinearActuator::dirty_position = false;
 volatile bool LinearActuator::stopped = true;
+volatile uint32_t LinearActuator::last_pcnt = 0;
+volatile uint32_t LinearActuator::last_pcnt_micros = 0;
 
 Preferences preferences;
+
+#define PCNT_UNIT PCNT_UNIT_0
 
 /// @brief constructor for LinearActuator
 /// @param _pulse_pin : pin connected to encoder open collector output
@@ -42,52 +47,61 @@ LinearActuator::LinearActuator(uint8_t _pulse_pin, uint8_t _limit_pin, MD10C* mo
     if (current_position == flag_value)
         goto_position(0);
 
-    attachInterrupt(digitalPinToInterrupt(pulse_pin), pulse_isr, CHANGE);
     attachInterrupt(digitalPinToInterrupt(limit_pin), limit_isr, RISING);
+
+    pcnt_config_t pcnt_config = { };          // Instance of pulse counter
+    pcnt_config.pulse_gpio_num = pulse_pin ;  // pin assignment for pulse counter = GPIO 15
+    pcnt_config.pos_mode = PCNT_COUNT_INC;    // count rising edges (=change from low to high logical level) as pulses
+    pcnt_config.counter_h_lim = 0xffff;       // set upper limit of counting 
+    pcnt_config.unit = PCNT_UNIT;             // select ESP32 pulse counter unit 0
+    pcnt_config.channel = PCNT_CHANNEL_0;     // select channel 0 of pulse counter unit 0
+    pcnt_unit_config(&pcnt_config);           // configur rigisters of the pulse counter
+  
+    pcnt_counter_pause(PCNT_UNIT);            // pause pulse counter unit
+    pcnt_counter_clear(PCNT_UNIT);            // zero and reset of pulse counter unit
+    pcnt_set_filter_value(PCNT_UNIT, 1000);   // set glitch filter, units of ns
+    pcnt_filter_enable(PCNT_UNIT);            // enable counter glitch filter (damping)
+    pcnt_counter_resume(PCNT_UNIT);           // resume counting on pulse counter unit
+
+    // A 1khz timer to firer the timer isr
+    hw_timer_t * timer = NULL;
+    timer = timerBegin(0, 80, true);               // the 80 prescaller gets the clock down 1MHz
+    timerAttachInterrupt(timer, &timer_isr, true); // attach the ISR and trigger on edgess
+    timerAlarmWrite(timer, 1000, true);            // trigger on count=1k (1ms)
+    timerAlarmEnable(timer);                       // GOOOOOO
 }
 
 
-// handle the limit switch being triggered
-void LinearActuator::limit_isr()
+// handle the timer expiring
+void LinearActuator::timer_isr()
 {
-    motor->stop();
-    stopped = true;
-    limit = true;
-    current_position = 0;
-}
+    if (digitalRead(limit_pin) && target_position <= 0)
+    {
+        stop();
+        target_position = current_position = 0;
+    }
 
+    int16_t pcnt;
+    pcnt_get_counter_value(PCNT_UNIT, &pcnt);
+    int pcnt_delta = pcnt - last_pcnt;
+    int pcnt_dt = micros() - last_pcnt_micros;
+    if (pcnt_dt < 0)
+        pcnt_dt += 0x10000;
 
-// Handle pulses from encoder
-void LinearActuator::pulse_isr()
-{
-    static volatile uint32_t last_edge=0;
-    uint32_t volatile this_edge = micros();
-    int tsle = this_edge - last_edge;
-    if (tsle < 0)
-        tsle += 0x10000;
-    last_edge = this_edge;
-
-    // debounce; ignre pulese less than 4ms
-    if (tsle < 4000)
+    if (pcnt_delta == 0 || pcnt_dt < 4000)
         return;
 
-    if (motor->get_direction() > 0)
-        current_position++;
-    else
-        current_position--;
+    current_position += motor->get_direction() * pcnt_delta;
+    last_pcnt = pcnt;
+    last_pcnt_micros = micros();
     dirty_position = true;
-    
-    limit = digitalRead(limit_pin);
 
     int err = target_position - current_position;
     if (err == 0)
     {
         motor->stop();
-        stopped = true;
-    }
-
-    if (stopped)
         return;
+    }
         
     if (target_position > 0)
         motor->set_direction(err);
@@ -104,6 +118,16 @@ void LinearActuator::pulse_isr()
         speed = max(speed, 64); // don't go below 64/255
     }
     motor->set_speed(speed);
+
+}
+
+
+// handle the limit switch being triggered
+void LinearActuator::limit_isr()
+{
+    stop();
+    limit = true;
+    current_position = 0;
 }
 
 
@@ -117,6 +141,12 @@ void LinearActuator::stop()
 {
     motor->stop();
     stopped = true;
+    // yeah this could go into a pcnt isr...
+    pcnt_counter_pause(PCNT_UNIT);             // pause pulse counter unit
+    pcnt_counter_clear(PCNT_UNIT);             // zero and reset of pulse counter unit
+    pcnt_counter_resume(PCNT_UNIT);            // resume counting on pulse counter unit
+    last_pcnt = 0;
+    target_position = current_position;
 }
 
 
@@ -136,11 +166,7 @@ void LinearActuator::goto_position(long position)
             save_position();
             return;
         }
-        // if there have been phantom pulsed to indicate its past limit
-        // bump the position so the isr doesn't reverse it immedietly
-        if (current_position < 0)
-            current_position = 50;
-        position = 0;
+        position = -99; // Cause I can't get it to return to zero & be at the limit.
     }
     else if (current_position > position)
         motor->set_direction(-1);
@@ -168,9 +194,13 @@ void LinearActuator::save_position()
 
 void LinearActuator::log_status()
 {
-    if (current_position != target_position || motor->get_speed())
-        Logger::trace("ap:%ld, tp:%ld, ms:%d, md:%d, gl:%ld, st:%d", 
+    static int last_current_position = 0;
+    if (current_position != last_current_position || motor->get_speed())
+    {
+        Logger::info("ap:%ld, tp:%ld, ms:%d, md:%d, gl:%ld, st:%d", 
             current_position, target_position, motor->get_speed(), motor->get_direction(),
             get_limit(), stopped);
+        last_current_position = current_position;
+    }
 }
 

@@ -19,6 +19,7 @@ class MD10C
         int get_speed() { return speed; };
         void set_direction(int dir);
         int get_direction() { return direction; }
+        uint32_t get_last_speed_millis() { return last_speed_millis; }
 
     private:
         uint8_t pwm_pin, direction_pin; // pins used to talk to the driver
@@ -26,5 +27,6 @@ class MD10C
         int pwm_freq; // frequency of pwm, in Hz
         int speed; // -255..255
         int direction;
+        uint32_t last_speed_millis;
 };
 #endif
