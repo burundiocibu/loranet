@@ -23,7 +23,7 @@ volatile int LinearActuator::last_open_error = 0;
 #define SF_DIRTY_POSITION 3
 #define SF_PHANTOM_PULSE 4
 #define SF_MOTOR_STOP 5
-#define SF_MOTOR_REVERSE 6
+#define SF_MOTOR_HUNT 6
 #define SF_ARMATTARGET 7
 volatile uint32_t LinearActuator::status_flags = 0;
 
@@ -100,8 +100,8 @@ void LinearActuator::timer_isr()
     {
         if (pcnt_dt > 5e6 && motor->get_speed())
         {
-            status_flags |= _BV(SF_PULSE_TIMEOUT);
             stop();
+            status_flags |= _BV(SF_PULSE_TIMEOUT) |  _BV(SF_MOTOR_STOP);
         }
     }
     else
@@ -127,13 +127,13 @@ void LinearActuator::timer_isr()
     if (err == 0)
     {
         motor->stop();
-        status_flags |= _BV(SF_ARMATTARGET);
+        if (motor->get_speed())
+            status_flags |= _BV(SF_ARMATTARGET);
         return;
     }
 
-    static int last_err = err;
-    if (last_err < 0 && err > 0)
-        status_flags |= _BV(SF_MOTOR_REVERSE);
+    if (motor->get_speed() == 0 && status_flags & _BV(SF_ARMATTARGET))
+        status_flags |= _BV(SF_MOTOR_HUNT);
 
     motor->set_direction(err);
 
@@ -171,7 +171,6 @@ void LinearActuator::stop()
     pcnt_counter_resume(PCNT_UNIT); // resume counting on pulse counter unit
     last_pcnt = 0;
     target_position = current_position;
-    status_flags |= _BV(SF_MOTOR_STOP);
 }
 
 // Fully retracting arm is position 0, limit switch engaged.
@@ -208,6 +207,7 @@ void LinearActuator::save_position()
     dirty_position = false;
     preferences.end();
     Logger::info("position saved %d", current_position);
+    status_flags &= ~_BV(SF_DIRTY_POSITION);
 }
 
 bool LinearActuator::update()

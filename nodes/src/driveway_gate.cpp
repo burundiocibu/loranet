@@ -14,7 +14,7 @@ String mgr_status()
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String(int(uptime()));
     msg += String(",rr:") + String(!digitalRead(REMOTE_RECEIVER));
-    // msg += String(",") + scc->status();
+    msg += String(",") + scc->status();
     return msg;
 }
 
