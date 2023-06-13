@@ -13,7 +13,7 @@ class MD10C
     public:
         MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t pwm_channel);
         MD10C() {};
-        void run(int speed) { set_direction(speed); set_speed(abs(speed)); };
+        void run(int speed) { set_direction(speed); set_speed(speed); };
         void stop() { set_speed(0); };
         void set_speed(int speed);
         int get_speed() { return speed; };

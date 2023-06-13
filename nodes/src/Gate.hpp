@@ -17,9 +17,10 @@ class Gate
         void close();
         void stop();
         float get_position();
-        bool update();
         bool set_closed_position(long position);
         long get_closed_position();
+        
+        bool update(); // return true if there is something to report
         String status();
 
     private:

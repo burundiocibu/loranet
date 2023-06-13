@@ -38,6 +38,6 @@ void MD10C::set_direction(int _speed)
 void MD10C::set_speed(int _speed)
 {
     speed = _speed;
-    ledcWrite(pwm_channel, speed);
+    ledcWrite(pwm_channel, abs(speed));
     last_speed_millis = millis();
 }
