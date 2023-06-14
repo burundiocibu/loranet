@@ -163,13 +163,13 @@ void LinearActuator::timer_isr()
     {
         new_speed = min( 2*err, 255);
         new_speed = min(int(dt(start_time)/8), new_speed);
-        new_speed = max( new_speed, min_new_speed); 
+        new_speed = max( new_speed, min_speed); 
     }
     else if (err < 0)
     {
         new_speed = max( 2*err, -255);
         new_speed = max(new_speed, -int(dt(start_time)/8));
-        new_speed = min( new_speed, -min_new_speed); 
+        new_speed = min( new_speed, -min_speed); 
     }
 
     motor->set_speed(new_speed);
