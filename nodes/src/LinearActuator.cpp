@@ -18,18 +18,21 @@ volatile uint32_t LinearActuator::last_pcnt_micros = 0;
 volatile int LinearActuator::last_open_error = 0;
 
 #define SF_LIMIT_ISR 0
-#define SF_PULSE_TIMEOUT 1
-#define SF_LIMIT_STOP 2
-#define SF_DIRTY_POSITION 3
-#define SF_PHANTOM_PULSE 4
-#define SF_MOTOR_STOP 5
+#define SF_LIMIT_STOP 1
+#define SF_MOTOR_STOP 2
+#define SF_PULSE_TIMEOUT 4
+#define SF_PHANTOM_PULSE 5
 #define SF_MOTOR_HUNT 6
-#define SF_ARMATTARGET 7
+#define SF_ARMATTARGET 8
+#define SF_DIRTY_POSITION 9
 volatile uint32_t LinearActuator::status_flags = 0;
 
 Preferences preferences;
 
 #define PCNT_UNIT PCNT_UNIT_0
+
+const int min_speed = 96;
+
 
 /// @brief constructor for LinearActuator
 /// @param _pulse_pin : pin connected to encoder open collector output
@@ -40,7 +43,7 @@ LinearActuator::LinearActuator(uint8_t _pulse_pin, uint8_t _limit_pin, MD10C *mo
     pulse_pin = _pulse_pin;
     limit_pin = _limit_pin;
     pinMode(pulse_pin, INPUT);
-    pinMode(limit_pin, INPUT);
+    pinMode(limit_pin, INPUT_PULLUP);
     motor = motor_ptr;
     motor->stop();
 
@@ -80,15 +83,6 @@ LinearActuator::LinearActuator(uint8_t _pulse_pin, uint8_t _limit_pin, MD10C *mo
 // handle the timer expiring
 void LinearActuator::timer_isr()
 {
-    // stop the motor if it is moving in and the limit switch is set
-    if (digitalRead(limit_pin) && motor->get_speed() < 0)
-    {
-        last_open_error = current_position;
-        stop();
-        target_position = current_position = 0;
-        status_flags |= _BV(SF_LIMIT_STOP);
-    }
-
     int16_t pcnt;
     pcnt_get_counter_value(PCNT_UNIT, &pcnt);
     int pcnt_delta = pcnt - last_pcnt;
@@ -101,7 +95,7 @@ void LinearActuator::timer_isr()
         if (pcnt_dt > 5e6 && motor->get_speed())
         {
             stop();
-            status_flags |= _BV(SF_PULSE_TIMEOUT) |  _BV(SF_MOTOR_STOP);
+            status_flags |= _BV(SF_PULSE_TIMEOUT) | _BV(SF_MOTOR_STOP);
         }
     }
     else
@@ -111,7 +105,6 @@ void LinearActuator::timer_isr()
             status_flags |= _BV(SF_PHANTOM_PULSE);
             last_pcnt = pcnt;
             last_pcnt_micros = micros();
-            return;
         }
         else
         {
@@ -123,31 +116,63 @@ void LinearActuator::timer_isr()
         }
     }
 
+    bool limit = digitalRead(limit_pin);
+    int speed = motor->get_speed();
     int err = target_position - current_position;
-    if (err == 0)
+
+    if (limit)
     {
-        motor->stop();
-        if (motor->get_speed())
-            status_flags |= _BV(SF_ARMATTARGET);
-        return;
+        if (target_position > 0 && err >= 0)
+            err = err;
+        else
+        {
+            last_open_error = current_position;
+            current_position = 0;
+            stop();
+            status_flags |= _BV(SF_LIMIT_STOP);
+            return;
+        }
+    }
+    else
+    {
+        if (target_position > 0)
+            err = err;
+        else if (target_position == 0)
+        {
+            if ((speed < 0 && err < 0) ||
+                (speed == 0 && err > 0) ||
+                (speed > 0 && err < 0))
+                err = err;
+            else
+                err = -min_speed;
+        }
+        else
+        {
+            if (err < 0)
+                err = err;
+            else
+                err = -min_speed;
+        }
     }
 
     if (motor->get_speed() == 0 && status_flags & _BV(SF_ARMATTARGET))
         status_flags |= _BV(SF_MOTOR_HUNT);
 
-    motor->set_direction(err);
-
-    int speed = 0;
-    if (current_position < 0)
-        speed = 64;
-    else
+    int new_speed = 0;
+    if (err > 0)
     {
-        err = abs(err);
-        speed = min(2 * err, 255);                   // start with the error as the speed
-        speed = min(int(dt(start_time) / 8), speed); // clamp it to dt
-        speed = max(speed, 96);                      // don't go below 37% duty cycle
+        new_speed = min( 2*err, 255);
+        new_speed = min(int(dt(start_time)/8), new_speed);
+        new_speed = max( new_speed, min_new_speed); 
     }
-    motor->set_speed(speed);
+    else if (err < 0)
+    {
+        new_speed = max( 2*err, -255);
+        new_speed = max(new_speed, -int(dt(start_time)/8));
+        new_speed = min( new_speed, -min_new_speed); 
+    }
+
+    motor->set_speed(new_speed);
 }
 
 // handle the limit switch being triggered
@@ -156,8 +181,8 @@ void LinearActuator::limit_isr()
     if (motor->get_speed() < 0)
     {
         last_open_error = current_position;
-        stop();
         current_position = 0;
+        stop();
         status_flags |= _BV(SF_LIMIT_ISR);
     }
 }
@@ -181,18 +206,15 @@ void LinearActuator::goto_position(long position)
 
     if (position > 2250)
         return;
-    if (position <= 0)
+
+    if (position <= 0 && digitalRead(limit_pin))
     {
-        motor->set_direction(-1);
-        if (digitalRead(limit_pin))
-        {
-            current_position = 0;
-            target_position = 0;
-            save_position();
-            return;
-        }
-        position = -10; // Cause I can't get it to return to zero & be at the limit.
+        current_position = 0;
+        target_position = 0;
+        save_position();
+        return;
     }
+
     target_position = position;
     last_pcnt_micros = micros(); // reset the pulse timeout
     start_time = millis();
