@@ -43,6 +43,8 @@ class LoRaNode():
         pass
 
 
+# See https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
+# for the device classes
 class EntityConfig:
     def __init__(self, name, device_class, device, topic):
         self.name = name
@@ -76,7 +78,6 @@ class BaseEntity:
         if state is not None:
             self.state = state
         self.mqtt_client.publish(self.config.state_topic, self.state)
-
 
         units="-"
         if hasattr(self.config, 'unit_of_measurement'):
@@ -140,6 +141,12 @@ class Temperature(BaseEntity):
         self.config.unit_of_measurement = "C"
         self.publish_discovery()
 
+class Distance(BaseEntity):
+    def __init__(self, name, device, mqtt_client, units=None):
+        super().__init__(name, "distance", "sensor", device, mqtt_client)
+        if units is not None:
+            self.config.unit_of_measurement = units
+        self.publish_discovery()
 
 class Sensor(BaseEntity):
     def __init__(self, name, device, mqtt_client, units=None):
@@ -150,7 +157,7 @@ class Sensor(BaseEntity):
 
 
 #=====================================
-# Below are the non read-only entities
+# Below are the interactive entities
 class Gate(BaseEntity):
     def __init__(self, name, device, mqtt_client):
         super().__init__(name, "gate", "cover", device, mqtt_client)
