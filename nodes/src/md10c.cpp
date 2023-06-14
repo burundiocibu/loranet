@@ -17,6 +17,8 @@ MD10C::MD10C(uint8_t pwm_pin, uint8_t direction_pin, uint8_t pwm_channel):
     set_speed(0);
 }
 
+/// @brief  sets the motor direction but not speed
+/// @param _speed used to determine direction, <0 means towards limit switch
 void MD10C::set_direction(int _speed)
 {
     if (_speed > 0)
@@ -31,8 +33,12 @@ void MD10C::set_direction(int _speed)
     }
 }
 
+/// @brief sets the motor speed but not direction
+/// @param _speed speed, 0=stopped, 255=maximum
 void MD10C::set_speed(int _speed)
 {
     speed = _speed;
-    ledcWrite(pwm_channel, speed);
+    set_direction(speed);
+    ledcWrite(pwm_channel, abs(speed));
+    last_speed_millis = millis();
 }

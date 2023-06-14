@@ -90,7 +90,7 @@ void Gate::close()
 
 
 /// @brief checks state of gate and performs auto-closing if needed 
-/// @return true of the state of the gate has changed and an update needs to be sent
+/// @return true of the state of the gate has changed and/or an update needs to be sent
 bool Gate::update()
 {
     if (auto_close_time != 0 && uptime() > auto_close_time)
@@ -114,18 +114,9 @@ bool Gate::update()
     }
 
     actuator->save_position();
-    actuator->log_status();
 
-    static uint32_t last_update_time = 0;
-    long t = dt(last_update_time);
-    static long last_pos = 0;
-    long current_pos = actuator->get_position();
-    if ( t > 60000 || (current_pos != last_pos && t > 150))
-    {
-        last_pos = current_pos;
-        last_update_time = millis();
+    if (actuator->update())
         return true;
-    }
     else
         return false;
 }
@@ -134,9 +125,8 @@ bool Gate::update()
 String Gate::status()
 {
     String msg;
-    msg += String("gp:") + String(long(get_position()));
-    msg += String(",ap:") + String(actuator->get_position());
-    msg += String(",gcp:") + String(get_closed_position());
-    msg += (String(",st:") + String(actuator->get_stopped()));
+    msg = "gp:" + String(int(get_position()))
+        + ",acp:" + String(closed_position)
+        + "," + actuator->status();
     return msg;
 }

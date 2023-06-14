@@ -1,4 +1,5 @@
 // -*- coding: utf-8 -*-
+#include <MacroLogger.h>
 #include "renogyrover.hpp"
 
 RenogyRover::RenogyRover(Stream &serial, uint8_t load)
@@ -24,7 +25,7 @@ String RenogyRover::status()
     float bv = battery_voltage();
     if (bv < 100)
     {
-        msg += String("bv:") + String(bv);
+        msg = String("bv:") + String(bv);
         msg += String(",bc:") + String(battery_current());
         msg += String(",bp:") + String(battery_percentage());
         msg += String(",ct:") + String(controller_temperature());
@@ -35,5 +36,8 @@ String RenogyRover::status()
         msg += String(",cf:") + String(controller_fault(), HEX);
         msg += String(",dl:") + String(discharging_limit_voltage());
     }
+    else
+        msg = String("cf:ce");
+
     return msg;
 }
