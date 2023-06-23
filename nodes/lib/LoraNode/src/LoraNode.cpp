@@ -125,13 +125,13 @@ bool LoraNode::get_message(String& msg, byte& sender)
         radio_state = state_rx;
 
         sender = buff[1];
+        uint8_t dest = buff[0];
         buff[pl] = 0;
         msg = String((char*)buff + 4);
-
         rx_count++;
         rssi = radio.getRSSI();
         snr = radio.getSNR();
-        if (state == RADIOLIB_ERR_NONE)
+        if (state == RADIOLIB_ERR_NONE && dest == node_id)
             return true;
         Logger::trace("state_rx_complete");
     }
