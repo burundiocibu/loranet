@@ -5,15 +5,17 @@
 String status()
 {
     // LiIon pack directly connected to processor
-    // float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
+    float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
 
     String msg;
     //    msg += String("v1:") + String(vbat);
     msg = String("rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String(int(uptime()));
+    msg += String(",vb:") + String(vbat,2);
     return msg;
 }
+
 
 void loop()
 {
@@ -28,8 +30,6 @@ void loop()
     }
 
 
-    if (millis() > 2000 && !digitalRead(USER_BUTTON1))
-    {
-        delay(400);
-    }
+    if (!digitalRead(USER_BUTTON1))
+        node->send_msg(sender, status());
 }
