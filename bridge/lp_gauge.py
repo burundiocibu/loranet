@@ -4,8 +4,6 @@
 """
 
 import logging
-import os
-import time
 
 import entities
 
@@ -25,26 +23,17 @@ class LPGauge(entities.LoRaNode):
         self.rtt = entities.Sensor(f"{self.name} rtt", self.device_config, mqtt_client, "ms")
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
 
-    def update_state(self):
-        logger.info("Requesting state")
-        if not self.radio.tx(self.id, "?"):
-            return
-
-    def receive_status(self, packet):
-        try:
-            msg = self.radio.decode_msg(packet)
-            self.rssi.publish_state(self.radio.rfm9x.last_rssi)
-            if 'rtt' in msg:
-                self.rtt.publish_state(int(msg['rtt']))
-            if 'hv' in msg:
-                self.hall_voltage.publish_state(float(msg["hv"]))
-            if 't1' in msg:
-                self.lp_temperature.publish_state(float(msg["t1"]))
-            if 'fvb' in msg:
-                self.feather_battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / (4.1 - 3.4)))
-                self.feather_battery_voltage.publish_state(float(msg["fvb"]))
-            if 'ut' in msg:
-                self.uptime.publish_state(int(msg["ut"]))
-            logger.debug(f"{self.name} state updated")
-        except BaseException as e:
-            logger.warning(f"Error processing packet:{packet}, {e}")
+    def update(self, msg):
+        self.rssi.publish_state(self.radio.rfm9x.last_rssi)
+        if 'rtt' in msg:
+            self.rtt.publish_state(int(msg['rtt']))
+        if 'hv' in msg:
+            self.hall_voltage.publish_state(float(msg["hv"]))
+        if 't1' in msg:
+            self.lp_temperature.publish_state(float(msg["t1"]))
+        if 'fvb' in msg:
+            self.feather_battery.publish_state(int(100 * (float(msg["fvb"]) - 3.4) / (4.1 - 3.4)))
+            self.feather_battery_voltage.publish_state(float(msg["fvb"]))
+        if 'ut' in msg:
+            self.uptime.publish_state(int(msg["ut"]))
+        logger.debug("state updated")

@@ -6,6 +6,7 @@
 import json
 import logging
 import platform
+import time
 from prometheus_client import start_http_server, Gauge
 
 
@@ -38,9 +39,27 @@ class LoRaNode():
         self.mqtt_client = mqtt_client
         self.device_config = DeviceConfig(f"{self.name} Manager")
 
-    def update_state(self):
-        """update and publish the state of all entities"""
+        self.update_rate = 60
+        self.last_state_update = time.monotonic() - self.update_rate
+
+    def update(msg):
         pass
+
+    def update_state(self, sender, packet):
+        if sender != self.id:
+            return
+        try:
+            msg = self.radio.decode_msg(packet)
+            self.last_state_update = time.monotonic()
+            self.update(msg)
+        except BaseException as e:
+            logger.warning(f"Error processing packet:{packet}, {e}")
+    
+    def request_state(self):
+        if time.monotonic() - self.last_state_update > self.update_rate and self.radio.free_to_send():
+            logger.info(f"{self.name} requesting state")
+            self.radio.tx(self.id, "SS")
+
 
 
 # See https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class

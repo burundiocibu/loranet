@@ -16,6 +16,7 @@ from lorabase import LoRaBase
 import entities
 from driveway_gate import DrivewayGate
 from lp_gauge import LPGauge
+from dev_node import DevNode
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def main():
     elif args.verbose > 1:  level = logging.DEBUG
 
     # Eventually may put argparse/config file processing here.
-    logging.basicConfig(format="%(asctime)s.%(msecs)03d %(threadName)s: %(message)s",
+    logging.basicConfig(format="%(asctime)s.%(msecs)03d %(threadName)s %(levelname)s %(name)s: %(message)s",
         level=level,
         stream=sys.stdout,
         datefmt="%H:%M:%S")
@@ -79,20 +80,23 @@ def main():
     loranet_bridge = LoRaNetBridge(0, radio, mqtt_client)
     driveway_gate = DrivewayGate("Driveway Gate", 2, radio, mqtt_client)
     lp_gauge = LPGauge("LP Gauge", 3, radio, mqtt_client)
-    dev_node = LPGauge("Dev Node", 4, radio, mqtt_client)
+    dev_node = DevNode("Dev Node", 4, radio, mqtt_client)
+    dev_node.update_rate = 15
 
     while True:
         msg = radio.rx()
         if msg is not None:
             sender = msg[1]
             packet = msg[4:].decode()
-            logger.info(f"Rx from:{sender}, msg:{packet}")
-            if sender == 2:   driveway_gate.receive_status(packet)
-            elif sender == 3: lp_gauge.receive_status(packet)
-            elif sender == 4: dev_node.receive_status(packet)
-            logger.debug(f"Done processing message from {sender}")
+            logger.info(f"Rx from:{sender}, rssi:{radio.rfm9x.rssi}, snr:{radio.rfm9x.snr}, msg:{packet}")
+            driveway_gate.update_state(sender, packet)
+            dev_node.update_state(sender, packet)
+            lp_gauge.update_state(sender, packet)
         else:
-            driveway_gate.update_state() 
+            time.sleep(0.01)
+
+        driveway_gate.request_state()
+        dev_node.request_state()
 
         if time_to_die:
             return;

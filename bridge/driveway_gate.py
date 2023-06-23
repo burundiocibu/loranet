@@ -62,83 +62,70 @@ class DrivewayGate(entities.LoRaNode):
         self.scc_temperature = entities.Temperature(f"{self.name} SCC Temperature", self.device_config, mqtt_client)
 
         self.mm_per_count = 0.25
-        self.update_rate = 60
-        self.last_state_update = time.monotonic() - self.update_rate
-
-    def update_state(self):
-        if time.monotonic() - self.last_state_update > self.update_rate:
-            logger.debug("Requesting state")
-            self.radio.tx(self.id, "SS")
-            self.last_state_update += self.update_rate
 
 
-    def receive_status(self, packet):
-        try:
-            msg = self.radio.decode_msg(packet)
-            self.last_state_update = time.monotonic()
-            self.rssi.publish_state(self.radio.rfm9x.last_rssi)
-            if 'v1' in msg:
-                self.esp_battery.publish_state(int(100 * (float(msg["v1"]) - 3.4) / (4.19 - 3.4)))
-                self.esp_battery_voltage.publish_state(float(msg["v1"]))
+    def update(self, msg):
+        self.rssi.publish_state(self.radio.rfm9x.last_rssi)
+        if 'v1' in msg:
+            self.esp_battery.publish_state(int(100 * (float(msg["v1"]) - 3.4) / (4.19 - 3.4)))
+            self.esp_battery_voltage.publish_state(float(msg["v1"]))
 
-            if 'ut' in msg:
-                self.uptime.publish_state(int(msg["ut"]))
+        if 'ut' in msg:
+            self.uptime.publish_state(int(msg["ut"]))
 
-            if 'snr' in msg:
-                self.snr.publish_state(int(msg["snr"]))
+        if 'snr' in msg:
+            self.snr.publish_state(int(msg["snr"]))
 
-            if 'rssi' in msg:
-                self.rssi.publish_state(int(msg["rssi"]))
+        if 'rssi' in msg:
+            self.rssi.publish_state(int(msg["rssi"]))
 
-            if 'bv' in msg:
-                self.scc_battery_voltage.publish_state(float(msg["bv"]));
-            
-            if 'bc' in msg:
-                self.scc_battery_current.publish_state(float(msg["bc"]));
-            
-            if 'bp' in msg:
-                self.scc_battery.publish_state(float(msg["bp"]))
+        if 'bv' in msg:
+            self.scc_battery_voltage.publish_state(float(msg["bv"]));
+        
+        if 'bc' in msg:
+            self.scc_battery_current.publish_state(float(msg["bc"]));
+        
+        if 'bp' in msg:
+            self.scc_battery.publish_state(float(msg["bp"]))
 
-            if 'dl' in msg:
-                self.scc_discharge_limit.publish_state(float(msg["dl"]))
+        if 'dl' in msg:
+            self.scc_discharge_limit.publish_state(float(msg["dl"]))
 
-            if 'cp' in msg:
-                self.scc_solar_power.publish_state(round(float(msg["cp"]),2))
+        if 'cp' in msg:
+            self.scc_solar_power.publish_state(round(float(msg["cp"]),2))
 
-            if 'cs' in msg:
-                self.scc_charge_state.publish_state(int(msg["cs"]))
+        if 'cs' in msg:
+            self.scc_charge_state.publish_state(int(msg["cs"]))
 
-            if 'lp' in msg:
-                self.scc_load_power.publish_state(float(msg["lp"]))
+        if 'lp' in msg:
+            self.scc_load_power.publish_state(float(msg["lp"]))
 
-            if 'ct' in msg:
-                self.scc_temperature.publish_state(float(msg["ct"]))
+        if 'ct' in msg:
+            self.scc_temperature.publish_state(float(msg["ct"]))
 
-            if 'lo' in msg:
-                if int(msg["lo"]) == 0:  self.scc_load_enable.state = "OFF"
-                else:                    self.scc_load_enable.state = "ON"
-                self.scc_load_enable.publish_state()
+        if 'lo' in msg:
+            if int(msg["lo"]) == 0:  self.scc_load_enable.state = "OFF"
+            else:                    self.scc_load_enable.state = "ON"
+            self.scc_load_enable.publish_state()
 
-            if 'ap' in msg:
-                self.actuator_position.publish_state(round(self.mm_per_count*float(msg["ap"]),2))
+        if 'ap' in msg:
+            self.actuator_position.publish_state(round(self.mm_per_count*float(msg["ap"]),2))
 
-            if 'acp' in msg:
-                self.gate_closed_position.publish_state(round( self.mm_per_count*float(msg["acp"]),2))
+        if 'acp' in msg:
+            self.gate_closed_position.publish_state(round( self.mm_per_count*float(msg["acp"]),2))
 
-            if 'loe' in msg:
-                self.actuator_loe.publish_state(int(msg["aloe"]))
+        if 'loe' in msg:
+            self.actuator_loe.publish_state(int(msg["aloe"]))
 
-            if 'gp' in msg:
-                self.gate.position = int(msg["gp"])
-                if self.gate.position > 0:
-                    self.gate.state = "open"
-                else:
-                    self.gate.state = "closed"
-                self.gate.publish_state()
-            logger.debug(f"{self.name} state updated")
+        if 'gp' in msg:
+            self.gate.position = int(msg["gp"])
+            if self.gate.position > 0:
+                self.gate.state = "open"
+            else:
+                self.gate.state = "closed"
+            self.gate.publish_state()
+        logger.debug("state updated")
 
-        except BaseException as e:
-            logger.warning(f"Error processing packet:{packet}, {e}")
 
     def gate_mqrx(self, mqtt_client, obj, message):
         if message.topic == self.gate.config.command_topic:

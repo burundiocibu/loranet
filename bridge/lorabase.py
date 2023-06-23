@@ -49,28 +49,25 @@ class LoRaBase():
         self.rfm9x.node =  0
         self.rfm9x.flags = 0 # default is 0
         self.rfm9x.preamble_length = 12
-        self.tx_stats = {'count':0}
-        self.rx_stats = {'count':0, 'err':0 }
         self.rfm9x_lock = threading.Lock()
-        self.msg = None # most recent received message
-
-    def print_stats(self, msg:str) -> None:
-        logger.debug(f"{msg}  tx:{self.tx_stats}  rx:{self.rx_stats}")
+        self.tx_time = 0
+        self.rx_time = 0
+        self.reply_timeout = 2 # how long to wait for a response
+        
 
     def tx(self, dest, msg:str) -> bool:
         with self.rfm9x_lock:
             t0 = time.perf_counter()
             self.rfm9x.destination = dest #  default is 255 (broadcast)
-            self.tx_stats['count'] += 1
             if not self.rfm9x.send(bytes(msg, "utf-8"), keep_listening=True):
-                self.tx_stats['err'] += 1
-                logger.debug(f"tx err:{self.tx_stats}")
+                logger.debug("tx err")
                 return False
             self.rfm9x.listen()
+            self.tx_time = time.monotonic()
             dt = round(1000 * (time.perf_counter() - t0), 1)
-            self.tx_stats['tx_dt'] = dt
-            logger.debug(f"tx ok:{self.tx_stats}")
+            logger.debug(f"tx to:{dest}, dt:{dt}, msg:{msg}")
             return True
+
 
     def rx(self):
         with self.rfm9x_lock:
@@ -81,17 +78,22 @@ class LoRaBase():
                 if packet is None:
                     return None
                 else:
-                    self.rx_stats['count'] += 1
-                    logger.debug(f"rx ok:{self.rx_stats}")
+                    self.rx_time = time.monotonic()
                     return packet
             else:
-                time.sleep(0.01);
                 return None;
+
+
+    def free_to_send(self):
+        dt = time.monotonic() - self.tx_time
+        return self.rx_time > self.tx_time or dt > self.reply_timeout
+
 
     # note this has to be seperate since it can't ack and broadcast
     def broadcast(self, msg:str) -> None:
         self.rfm9x.destination = 255 #  default is 255 (broadcast)
         self.rfm9x.send(bytes(msg, "utf-8"))
+
 
     def decode_msg(self, msg:str) -> dict:
         d = {}
