@@ -31,5 +31,5 @@ void loop()
 
 
     if (!digitalRead(USER_BUTTON1))
-        node->send_msg(sender, status());
+        node->send_msg(0, status());
 }
