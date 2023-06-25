@@ -68,7 +68,7 @@ long Gate::get_closed_position()
 /// @param auto_close_dt seconds till gate shall auto close, 0 means never auto close
 void Gate::open(double auto_close_dt)
 {
-    if (dt(last_open) < 1000)
+    if (dt(last_open) < 1000 || get_position() < 5 )
         return;
     last_open = millis();
     Logger::trace("open");

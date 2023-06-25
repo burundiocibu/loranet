@@ -3,7 +3,7 @@
 #include "driveway_gate.hpp"
 #include "utils.hpp"
 
-String mgr_status()
+String status(bool include_scc=false)
 {
     // LiIon pack directly connected to processor
     // float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
@@ -13,8 +13,9 @@ String mgr_status()
     msg = String("rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String(int(uptime()));
-    msg += String(",rr:") + String(!digitalRead(REMOTE_RECEIVER));
-    msg += String(",") + scc->status();
+    msg += String(",poe:") + String(digitalRead(POE_ENABLE));
+    if (include_scc)
+        msg += String(",") + scc->status();
     return msg;
 }
 
@@ -64,14 +65,22 @@ void loop()
             delay(500); // it takes a bit for the scc to actuall do this
             node->send_msg(sender, scc->status());
         }
+        else if (msg.startsWith("POE"))
+        {
+            digitalWrite(POE_ENABLE, msg.substring(3).toInt());
+            node->send_msg(sender, status());
+        }
         else if (msg == "SS")
-            node->send_msg(sender, mgr_status() + "," + gate->status());
+            node->send_msg(sender, status(true) + "," + gate->status());
     }
 
     // yeah, its an active low signal
     uint8_t remote = !digitalRead(REMOTE_RECEIVER);
     if (remote)
+    {
         gate->open(90);
+        node->send_msg(0, String("rr:1"));
+    }
 
     if (gate->update())
         node->send_msg(0, gate->status());
