@@ -54,7 +54,7 @@ f3  | J3.3  | 3v3    |
 f4  | J3.4  | gpio37 | ADC_Ctrl w pullup
 f5  | J3.5  | gpio46 | Output, MD10C_PWM
 f6  | J3.6  | gpio45 | Output, MD10C_DIR
-f7  | J3.7  | gpio42 | Output, RELAY1_IN
+f7  | J3.7  | gpio42 | Output, RELAY1_IN, Gate Lock
 f8  | J3.8  | gpio41 | 
 f9  | J3.9  | gpio40 | 
 f10 | J3.10 | gpio39 | 
@@ -81,7 +81,7 @@ e7  | J2.7  | rst    | RST_SW
 e8  | J2.8  | gpio0  | USER_SW
 e9  | J2.9  | gpio36 | Vext_Ctrl w pullup
 e10 | J2.10 | gpio35 | LED_Write
-e11 | J2.11 | gpio34 | 
+e11 | J2.11 | gpio34 | Output, RELAY2_IN, PoE control
 e12 | J2.12 | gpio33 | Renogy TTL-RxD
 e13 | J2.13 | gpio47 | Renogy TTL-TxD
 e14 | J2.14 | gpio48 |

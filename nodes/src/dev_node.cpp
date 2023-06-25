@@ -19,6 +19,8 @@ String status()
 
 void loop()
 {
+    ArduinoOTA.handle();
+
     Logger::set_level(Logger::Level::TRACE);
     String msg;
     byte sender;

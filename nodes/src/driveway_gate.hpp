@@ -3,13 +3,15 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <MacroLogger.h>
 
+#include <MacroLogger.h>
+#include "wifi_setup.hpp"
 #include "renogyrover.hpp"
 #include "PeriodicTimer.hpp"
 #include "LinearActuator.hpp"
 #include "Gate.hpp"
 #include "LoraNode.hpp"
+#include "secrets.hpp"
 
 // This hardware is a Heltec wifi-lora esp32 v3 module
 
@@ -30,6 +32,7 @@
 
 #define GATE_LOCK 42
 #define REMOTE_RECEIVER 39
+#define POE_ENABLE 34
 
 #define MD10C_PWM_PIN 46
 #define MD10C_DIR_PIN 45
@@ -49,6 +52,7 @@ Gate* gate;
 RenogyRover* scc;
 LoraNode* node;
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C* display;
+const char* hostname = "driveway-gate";
 
 void setup()
 {
@@ -58,8 +62,10 @@ void setup()
     // Console
     Serial.begin(115200);
     Logger::set_level(Logger::Level::INFO);
-    Logger::info("driveway_gate");
     pinMode(VBAT, INPUT);
+
+    pinMode(POE_ENABLE, OUTPUT);
+    digitalWrite(POE_ENABLE, 1);
 
     pinMode(USER_BUTTON1, INPUT);
 
@@ -79,6 +85,8 @@ void setup()
     display->firstPage();
     do {
         display->setCursor(0, 12);
-        display->print(F("gate mgr"));
+        display->print(hostname);
     } while ( display->nextPage() );
+
+    wifi_setup(hostname);
 }
