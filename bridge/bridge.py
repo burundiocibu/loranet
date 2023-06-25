@@ -81,7 +81,7 @@ def main():
     driveway_gate = DrivewayGate("Driveway Gate", 2, radio, mqtt_client)
     lp_gauge = LPGauge("LP Gauge", 3, radio, mqtt_client)
     dev_node = DevNode("Dev Node", 4, radio, mqtt_client)
-    dev_node.update_rate = 15
+    dev_node.update_rate = 60
 
     while True:
         msg = radio.rx()

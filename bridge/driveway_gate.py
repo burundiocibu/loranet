@@ -43,11 +43,13 @@ class DrivewayGate(entities.LoRaNode):
         self.mqtt_client.subscribe(self.gate_set_closed_position.config.command_topic)
 
         self.scc_load_enable = entities.Switch(f"{self.name} SCC Load Enable", self.device_config, self.mqtt_client)
-        self.mqtt_client.message_callback_add(self.scc_load_enable.config.command_topic, self.scc_mqrx)
+        self.mqtt_client.message_callback_add(self.scc_load_enable.config.command_topic, self.scc_load_enable_mqrx)
         self.mqtt_client.subscribe(self.scc_load_enable.config.command_topic)
 
-        self.esp_battery = entities.BatteryLevel(f"{self.name} esp Battery", self.device_config, mqtt_client)
-        self.esp_battery_voltage = entities.Voltage(f"{self.name} esp Battery Voltage", self.device_config, mqtt_client)
+        self.poe_enable = entities.Switch(f"{self.name} PoE Enable", self.device_config, self.mqtt_client)
+        self.mqtt_client.message_callback_add(self.poe_enable.config.command_topic, self.poe_enable_mqrx)
+        self.mqtt_client.subscribe(self.poe_enable.config.command_topic)
+
         self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
         self.snr = entities.SNR(f"{self.name} SNR", self.device_config, mqtt_client)
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
@@ -66,10 +68,6 @@ class DrivewayGate(entities.LoRaNode):
 
     def update(self, msg):
         self.rssi.publish_state(self.radio.rfm9x.last_rssi)
-        if 'v1' in msg:
-            self.esp_battery.publish_state(int(100 * (float(msg["v1"]) - 3.4) / (4.19 - 3.4)))
-            self.esp_battery_voltage.publish_state(float(msg["v1"]))
-
         if 'ut' in msg:
             self.uptime.publish_state(int(msg["ut"]))
 
@@ -108,13 +106,18 @@ class DrivewayGate(entities.LoRaNode):
             else:                    self.scc_load_enable.state = "ON"
             self.scc_load_enable.publish_state()
 
+        if 'poe' in msg:
+            if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
+            else:                     self.poe_enable.state = "ON"
+            self.poe_enable.publish_state()
+
         if 'ap' in msg:
             self.actuator_position.publish_state(round(self.mm_per_count*float(msg["ap"]),2))
 
         if 'acp' in msg:
             self.gate_closed_position.publish_state(round( self.mm_per_count*float(msg["acp"]),2))
 
-        if 'loe' in msg:
+        if 'aloe' in msg:
             self.actuator_loe.publish_state(int(msg["aloe"]))
 
         if 'gp' in msg:
@@ -164,12 +167,22 @@ class DrivewayGate(entities.LoRaNode):
         self.radio.tx(self.id, "GSCP")
         return
 
-    def scc_mqrx(self, mqtt_client, obj, message):
+    def scc_load_enable_mqrx(self, mqtt_client, obj, message):
         if message.payload == b"ON":
             logger.info("scc load on")
             self.radio.tx(self.id, "R1")
         elif message.payload == b"OFF":
             logger.info("scc load off")
             self.radio.tx(self.id, "R0")
+        else:
+            logger.warning(f"Received unexpected mqtt message: {message.payload}")
+
+    def poe_enable_mqrx(self, mqtt_client, obj, message):
+        if message.payload == b"ON":
+            logger.info("PoE on")
+            self.radio.tx(self.id, "POE1")
+        elif message.payload == b"OFF":
+            logger.info("PoE off")
+            self.radio.tx(self.id, "POE0")
         else:
             logger.warning(f"Received unexpected mqtt message: {message.payload}")
