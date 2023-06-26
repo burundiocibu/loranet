@@ -4,12 +4,11 @@
 #include <Wire.h>
 #include <SPI.h>
 
-#include <MacroLogger.h>
 #include "wifi_setup.hpp"
-#include "renogyrover.hpp"
+
+// This seems to not like being included before the AsyncTCP stuff
+#include <MacroLogger.h>
 #include "PeriodicTimer.hpp"
-#include "LinearActuator.hpp"
-#include "Gate.hpp"
 #include "LoraNode.hpp"
 #include "secrets.hpp"
 
@@ -26,56 +25,25 @@
 #define SX1262_BUSY 13
 #define SX1262_DIO1 14
 
-#define NODE_ADDRESS 2
+#define NODE_ADDRESS 4
 
 #define VBAT 1  // connected to Vbatt through a 1/2 divider network
 
-#define GATE_LOCK 42
-#define REMOTE_RECEIVER 39
-#define POE_ENABLE 34
-
-#define MD10C_PWM_PIN 46
-#define MD10C_DIR_PIN 45
-#define MD10C_PWM_CHAN 0
-
-#define ENCODER_PULSE_PIN 6
-#define ENCODER_LIMIT_PIN 7
-
-#define RENOGY_TXD 47
-#define RENOGY_RXD 33
-
 #define USER_BUTTON1 0
 
-MD10C* motor;
-LinearActuator* actuator;
-Gate* gate;
-RenogyRover* scc;
 LoraNode* node;
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C* display;
-const char* hostname = "driveway-gate";
+const char* hostname = "dev-node";
 
 void setup()
 {
-    pinMode(MD10C_PWM_PIN, OUTPUT);
-    digitalWrite(MD10C_PWM_PIN, 0);
-
     // Console
     Serial.begin(115200);
     Logger::set_level(Logger::Level::INFO);
+    Logger::info("dev_node");
     pinMode(VBAT, INPUT);
 
-    pinMode(POE_ENABLE, OUTPUT);
-    digitalWrite(POE_ENABLE, 1);
-
     pinMode(USER_BUTTON1, INPUT);
-
-    motor = new MD10C(MD10C_PWM_PIN, MD10C_DIR_PIN, MD10C_PWM_CHAN);
-    actuator = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
-    gate = new Gate(actuator, GATE_LOCK);
-    
-    Serial1.begin(9600, SERIAL_8N1, RENOGY_TXD, RENOGY_RXD);
-    scc = new RenogyRover(Serial1);
-    scc->load_on(1);
 
     node = new LoraNode(SX1262_NSS, SX1262_DIO1, SX1262_RST, SX1262_BUSY, NODE_ADDRESS);
 

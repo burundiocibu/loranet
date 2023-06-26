@@ -24,7 +24,7 @@ Gate::Gate(LinearActuator* la_ptr, uint8_t lock_pin) :
 /// @param position 0=closed, 100=fully open
 void Gate::goto_position(float position)
 {
-    if (get_position() < 1)
+    if (get_position() < 2)
     {
         digitalWrite(lock_pin, HIGH);
         Logger::trace("unlock");
@@ -68,7 +68,7 @@ long Gate::get_closed_position()
 /// @param auto_close_dt seconds till gate shall auto close, 0 means never auto close
 void Gate::open(double auto_close_dt)
 {
-    if (dt(last_open) < 1000)
+    if (dt(last_open) < 1000 || get_position() < 5 )
         return;
     last_open = millis();
     Logger::trace("open");
@@ -97,22 +97,18 @@ bool Gate::update()
         close();
 
     int gp = get_position();
-    if (gp < 2 && gp > 0 && !digitalRead(lock_pin))
+    int lock = digitalRead(lock_pin);
+    if (!lock && gp < 2 && actuator->get_speed() )
     {
         digitalWrite(lock_pin, HIGH);
         Logger::trace("unlock");
     }
-    else if (gp > 3 && digitalRead(lock_pin))
+    else if (lock && gp > 3)
     {
         digitalWrite(lock_pin, LOW);
         Logger::trace("lock");
     }
-    else if (gp == 0 && digitalRead(lock_pin) && actuator->get_speed() == 0)
-    {
-        digitalWrite(lock_pin, LOW);
-        Logger::trace("lock");
-    }
-
+ 
     actuator->save_position();
 
     if (actuator->update())
