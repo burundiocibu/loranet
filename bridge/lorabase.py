@@ -84,7 +84,7 @@ class LoRaBase():
                 return None;
 
 
-    def free_to_send(self):
+    def free_to_send(self) -> bool:
         dt = time.monotonic() - self.tx_time
         return self.rx_time > self.tx_time or dt > self.reply_timeout
 

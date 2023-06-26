@@ -18,9 +18,12 @@ class DevNode(entities.LoRaNode):
 
         self.battery = entities.BatteryLevel(f"{self.name} Battery", self.device_config, mqtt_client)
         self.battery_voltage = entities.Voltage(f"{self.name} Battery Voltage", self.device_config, mqtt_client)
-        self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
+        self.rssi = entities.RSSI(f"{self.name} LoRa RSSI", self.device_config, mqtt_client)
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
 
+        self.restart = entities.Button(f"{self.name} Restart", self.device_config, self.mqtt_client, icon="mdi:restart")
+        self.mqtt_client.message_callback_add(self.restart.config.command_topic, self.restart_mqrx)
+        self.mqtt_client.subscribe(self.restart.config.command_topic)
 
     def update(self, msg):
         self.rssi.publish_state(self.radio.rfm9x.last_rssi)
@@ -30,3 +33,8 @@ class DevNode(entities.LoRaNode):
         if 'ut' in msg:
             self.uptime.publish_state(int(msg["ut"]))
         logger.debug("state updated")
+
+    def restart_mqrx(self, mqtt_client, obj, message):
+        logger.info(f"restart")
+        self.radio.tx(self.id, "restart")
+        return

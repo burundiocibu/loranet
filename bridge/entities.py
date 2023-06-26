@@ -49,15 +49,18 @@ class LoRaNode():
         if sender != self.id:
             return
         try:
-            msg = self.radio.decode_msg(packet)
-            self.last_state_update = time.monotonic()
-            self.update(msg)
+            if packet[0:5] == "text:":
+                logger.info(packet)
+            else:
+                self.last_state_update = time.monotonic()
+                msg = self.radio.decode_msg(packet)
+                self.update(msg)
         except BaseException as e:
             logger.warning(f"Error processing packet:{packet}, {e}")
     
     def request_state(self):
         if time.monotonic() - self.last_state_update > self.update_rate and self.radio.free_to_send():
-            logger.info(f"{self.name} requesting state")
+            logger.debug(f"{self.name} requesting state")
             self.radio.tx(self.id, "SS")
 
 

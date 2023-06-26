@@ -54,6 +54,10 @@ class DrivewayGate(entities.LoRaNode):
         self.snr = entities.SNR(f"{self.name} SNR", self.device_config, mqtt_client)
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
 
+        self.restart = entities.Button(f"{self.name} Restart", self.device_config, self.mqtt_client, icon="mdi:restart")
+        self.mqtt_client.message_callback_add(self.restart.config.command_topic, self.restart_mqrx)
+        self.mqtt_client.subscribe(self.restart.config.command_topic)
+
         self.scc_battery_voltage = entities.Voltage(f"{self.name} SCC Battery Voltage", self.device_config, mqtt_client)
         self.scc_battery_current = entities.Current(f"{self.name} SCC Battery Current", self.device_config, mqtt_client)
         self.scc_battery = entities.BatteryLevel(f"{self.name} SCC Battery", self.device_config, mqtt_client)
@@ -186,3 +190,8 @@ class DrivewayGate(entities.LoRaNode):
             self.radio.tx(self.id, "POE0")
         else:
             logger.warning(f"Received unexpected mqtt message: {message.payload}")
+
+    def restart_mqrx(self, mqtt_client, obj, message):
+        logger.info(f"restart")
+        self.radio.tx(self.id, "restart")
+        return
