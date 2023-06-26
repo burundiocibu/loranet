@@ -13,6 +13,7 @@ String status()
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String(int(uptime()));
     msg += String(",vb:") + String(vbat,2);
+    msg += String("");
     return msg;
 }
 
@@ -27,11 +28,15 @@ void loop()
     if (node->get_message(msg, sender))
     {
         Logger::info("Rx:from:%d, %s", sender, msg);
-        if (msg == "SS")
+        if (msg.startsWith("SS"))
             node->send_msg(sender, status());
+        else if (msg.startsWith("restart"))
+        {
+            node->send_msg(sender, "text: restarting");
+            esp_restart();
+        }
     }
 
-
     if (!digitalRead(USER_BUTTON1))
-        node->send_msg(0, status());
+        node->send_msg(0, "text: This is a test");
 }

@@ -70,9 +70,16 @@ void loop()
             digitalWrite(POE_ENABLE, msg.substring(3).toInt());
             node->send_msg(sender, status());
         }
+        else if (msg.startsWith("restart"))
+        {
+            node->send_msg(sender, "text: restarting");
+            esp_restart();
+        }
         else if (msg == "SS")
             node->send_msg(sender, status(true) + "," + gate->status());
-    }
+        else
+            node->send_msg(sender, String("text: unreconized command:") + msg);
+}
 
     // yeah, its an active low signal
     uint8_t remote = !digitalRead(REMOTE_RECEIVER);
