@@ -18,6 +18,25 @@
 // 5 float charging
 // 6 current limiting
 
+// controller_fault:
+// B0: battery over-discharge
+// B1: battery over-voltage
+// B2: battery under-voltage
+// B3: load short circuit
+// B4: load over-current
+// B5: controller temp too high
+// B6: ambient temp too high
+// B7: PV input overpower
+// B8: PV input short circuit
+// B9: PV input over-voltage
+// B10: PV counter-current
+// B11 PV working point over-voltage
+// B12: PV reversely connected
+// B13: anti-reverse MOS short
+// B14: charge MOS short circuit
+// B15: reserved
+
+
 class RenogyRover
 {
     public:
