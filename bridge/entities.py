@@ -68,17 +68,19 @@ class LoRaNode():
 # See https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
 # for the device classes
 class EntityConfig:
-    def __init__(self, name, device_class, device, topic):
+    def __init__(self, name, device_class, device, topic, icon):
         self.name = name
         if device_class is not None:
             self.device_class = device_class
         self.state_topic = f"{topic}/state"
         self.unique_id = "{}-{}".format(basename, cname(name))
         self.device = vars(device)
+        if icon is not None:
+            self.icon = icon
 
 
 class BaseEntity:
-    def __init__(self, name, device_class, entity_class, device, mqtt_client, root_topic=basename):
+    def __init__(self, name, device_class, entity_class, device, mqtt_client, root_topic=basename, icon=None):
         self.name = name
         self.cname = cname(self.name)
         self.root_topic = root_topic
@@ -86,7 +88,7 @@ class BaseEntity:
         self.entity_class = entity_class
         self.device_class = device_class
         self.topic = f"{self.root_topic}/{self.entity_class}/{self.cname}"
-        self.config = EntityConfig(self.name, self.device_class, device, self.topic)
+        self.config = EntityConfig(self.name, self.device_class, device, self.topic, icon)
         self.state = None
 
     def publish_discovery(self):
@@ -100,7 +102,7 @@ class BaseEntity:
         if state is not None:
             self.state = state
         self.mqtt_client.publish(self.config.state_topic, self.state)
-
+        
         units="-"
         if hasattr(self.config, 'unit_of_measurement'):
             units=self.config.unit_of_measurement
@@ -170,6 +172,13 @@ class Distance(BaseEntity):
             self.config.unit_of_measurement = units
         self.publish_discovery()
 
+class Presense(BaseEntity):
+    def __init__(self, name, device, mqtt_client):
+        super().__init__(name, "presense", "binary_sensor", device, mqtt_client)
+        #self.config.state_class = "measurement"
+        del self.config.device_class
+        self.publish_discovery()
+
 class Sensor(BaseEntity):
     def __init__(self, name, device, mqtt_client, units=None):
         super().__init__(name, None, "sensor", device, mqtt_client)
@@ -206,10 +215,9 @@ class Switch(BaseEntity):
 
 class Button(BaseEntity):
     def __init__(self, name, device, mqtt_client, icon):
-        super().__init__(name, "button", "button", device, mqtt_client)
+        super().__init__(name, "button", "button", device, mqtt_client, icon)
         self.config.command_topic = f"{self.topic}/command"
         self.config.acty_t = f"{self.topic}/status"
-        self.config.icon = icon
         del self.config.device_class
         del self.config.state_topic
         self.publish_discovery()

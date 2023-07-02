@@ -17,6 +17,7 @@ import entities
 from driveway_gate import DrivewayGate
 from lp_gauge import LPGauge
 from dev_node import DevNode
+from driveway_sensor import DrivewaySensor
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +81,8 @@ def main():
     loranet_bridge = LoRaNetBridge(0, radio, mqtt_client)
     driveway_gate = DrivewayGate("Driveway Gate", 2, radio, mqtt_client)
     lp_gauge = LPGauge("LP Gauge", 3, radio, mqtt_client)
-    dev_node = DevNode("Dev Node", 4, radio, mqtt_client)
-    # dev_node.update_rate = 60
+    #dev_node = DevNode("Dev Node", 4, radio, mqtt_client)
+    driveway_sensor = DrivewaySensor("Driveway Sensor", 5, radio, mqtt_client)
 
     while True:
         msg = radio.rx()
@@ -89,14 +90,16 @@ def main():
             sender = msg[1]
             packet = msg[4:].decode()
             logger.info(f"Rx from:{sender},rssi:{radio.rfm9x.rssi},snr:{radio.rfm9x.snr},msg:{packet}")
+            #dev_node.update_state(sender, packet)
             driveway_gate.update_state(sender, packet)
-            dev_node.update_state(sender, packet)
             lp_gauge.update_state(sender, packet)
+            driveway_sensor.update_state(sender, packet)
         else:
             time.sleep(0.01)
 
+        #dev_node.request_state()
         driveway_gate.request_state()
-        dev_node.request_state()
+        driveway_sensor.checkin()
 
         if time_to_die:
             return;
