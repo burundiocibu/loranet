@@ -29,6 +29,8 @@ class DrivewayGate(entities.LoRaNode):
 
         self.gate_closed_position = entities.Distance(f"{self.name} Actuator Closed Position", self.device_config, mqtt_client, "mm")
         self.actuator_loe = entities.Sensor(f"{self.name} Actuator LOE", self.device_config, mqtt_client, "cnt")
+        self.arm_limit = entities.Binary(f"{self.name} Limit Switch", self.device_config, self.mqtt_client)
+        self.remote_trigger = entities.Binary(f"{self.name} Remote Trigger", self.device_config, self.mqtt_client)
 
         self.gate_jog_open = entities.Button(f"{self.name} Jog Open", self.device_config, self.mqtt_client, icon="mdi:gate-open")
         self.mqtt_client.message_callback_add(self.gate_jog_open.config.command_topic, self.gate_jog_open_mqrx)
@@ -93,6 +95,15 @@ class DrivewayGate(entities.LoRaNode):
         if 'dl' in msg:
             self.scc_discharge_limit.publish_state(float(msg["dl"]))
 
+        if 'rr' in msg:
+            self.remote_trigger.publish_state("ON")
+        else:
+            self.remote_trigger.publish_state("OFF")
+
+        if 'al' in msg:
+            if int(msg["al"]) == 1: self.arm_limit.publish_state("ON")
+            else:                   self.arm_limit.publish_state("OFF")
+
         if 'cp' in msg:
             self.scc_solar_power.publish_state(round(float(msg["cp"]),2))
 
@@ -106,14 +117,12 @@ class DrivewayGate(entities.LoRaNode):
             self.scc_temperature.publish_state(float(msg["ct"]))
 
         if 'lo' in msg:
-            if int(msg["lo"]) == 0:  self.scc_load_enable.state = "OFF"
-            else:                    self.scc_load_enable.state = "ON"
-            self.scc_load_enable.publish_state()
+            if int(msg["lo"]) == 0:  self.scc_load_enable.publish_state("OFF")
+            else:                    self.scc_load_enable.publish_state("ON")
 
         if 'poe' in msg:
-            if int(msg["poe"]) == 0:  self.poe_enable.state = "OFF"
-            else:                     self.poe_enable.state = "ON"
-            self.poe_enable.publish_state()
+            if int(msg["poe"]) == 0:  self.poe_enable.publish_state("OFF")
+            else:                     self.poe_enable.publish_state("ON")
 
         if 'ap' in msg:
             self.actuator_position.publish_state(round(self.mm_per_count*float(msg["ap"]),2))

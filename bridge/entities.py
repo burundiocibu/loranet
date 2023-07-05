@@ -179,6 +179,12 @@ class Presense(BaseEntity):
         del self.config.device_class
         self.publish_discovery()
 
+class Binary(BaseEntity):
+    def __init__(self, name, device, mqtt_client):
+        super().__init__(name, "None", "binary_sensor", device, mqtt_client)
+        del self.config.device_class
+        self.publish_discovery()
+
 class Sensor(BaseEntity):
     def __init__(self, name, device, mqtt_client, units=None):
         super().__init__(name, None, "sensor", device, mqtt_client)
