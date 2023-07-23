@@ -133,12 +133,17 @@ class DrivewayGate(entities.LoRaNode):
         if 'aloe' in msg:
             self.actuator_loe.publish_state(int(msg["aloe"]))
 
-        if 'gp' in msg:
+        if 'gp' in msg and 'ms' in msg:
             self.gate.position = int(msg["gp"])
-            if self.gate.position > 0:
-                self.gate.state = "open"
-            else:
+            motor_speed = int(msg['ms'])
+            if motor_speed > 0:
+                self.gate.state = "closing"
+            elif motor_speed < 0:
+                self.gate.state = "opening"
+            elif self.gate.position == 0:
                 self.gate.state = "closed"
+            else:
+                self.gate.state = "open"
             self.gate.publish_state()
         logger.debug("state updated")
 

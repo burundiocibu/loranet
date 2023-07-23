@@ -4,7 +4,6 @@
 """
 
 import argparse
-import asyncio
 import datetime
 import logging
 import os
@@ -21,10 +20,10 @@ from driveway_sensor import DrivewaySensor
 
 logger = logging.getLogger(__name__)
 
-time_to_die = False;
 
 def on_disconnect(userdata, rc, properties):
     logger.warning("mqtt disconnected. terminating")
+    global time_to_die
     time_to_die = True
 
 
@@ -84,7 +83,9 @@ def main():
     #dev_node = DevNode("Dev Node", 4, radio, mqtt_client)
     driveway_sensor = DrivewaySensor("Driveway Sensor", 5, radio, mqtt_client)
 
-    while True:
+    global time_to_die
+    time_to_die = False
+    while not time_to_die:
         msg = radio.rx()
         if msg is not None:
             sender = msg[1]
@@ -100,9 +101,7 @@ def main():
         #dev_node.request_state()
         driveway_gate.request_state()
         driveway_sensor.checkin()
-
-        if time_to_die:
-            return;
+    sys.exit(-1)
 
 
 if __name__ == "__main__":
