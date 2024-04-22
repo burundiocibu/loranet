@@ -68,6 +68,7 @@ void setup()
     digitalWrite(POE_ENABLE, 1);
 
     pinMode(USER_BUTTON1, INPUT);
+    pinMode(REMOTE_RECEIVER, INPUT_PULLUP);
 
     motor = new MD10C(MD10C_PWM_PIN, MD10C_DIR_PIN, MD10C_PWM_CHAN);
     actuator = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
