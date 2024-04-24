@@ -20,7 +20,7 @@ String status()
 
 void loop()
 {
-    ArduinoOTA.handle();
+    ota_handle();
 
     Logger::set_level(Logger::Level::TRACE);
     String msg;
@@ -39,4 +39,11 @@ void loop()
 
     if (!digitalRead(USER_BUTTON1))
         node->send_msg(0, "text: This is a test");
+
+    display->firstPage();
+    do
+    {
+        display->setCursor(0, 12);
+        display->print(WiFi.localIP());
+    } while (display->nextPage());
 }

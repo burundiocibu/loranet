@@ -33,14 +33,14 @@
 
 LoraNode* node;
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C* display;
-const char* hostname = "dev-node";
+const char* hostname = "dln";
 
 void setup()
 {
     // Console
     Serial.begin(115200);
     Logger::set_level(Logger::Level::INFO);
-    Logger::info("dev_node");
+    Logger::info("dln");
     pinMode(VBAT, INPUT);
 
     pinMode(USER_BUTTON1, INPUT);
