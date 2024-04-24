@@ -1,7 +1,7 @@
 [Unit]
 Description="Bridge LoRa radio to mqtt/prometheus"
 StartLimitIntervalSec=30
-StartLimitBurst=2
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -10,6 +10,7 @@ EnvironmentFile=/home/littlej/git/loranet/bridge/secrets
 Environment=PATH=/home/littlej/git/loranet/bridge/.venv/bin:$PATH
 ExecStart=/home/littlej/git/loranet/bridge/.venv/bin/python3 bridge.py -v
 Restart=on-failure
+RestartSec=120
 
 [Install]
 WantedBy=default.target
