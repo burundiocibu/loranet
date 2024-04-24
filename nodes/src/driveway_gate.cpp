@@ -21,7 +21,7 @@ String status(bool include_scc=false)
 
 void loop()
 {
-    ArduinoOTA.handle();
+    ota_handle();
 
     Logger::set_level(Logger::Level::TRACE);
     String msg;
