@@ -127,17 +127,6 @@ GPIO18 | OLED_SCL
 | Gnd     | Gnd
 | Vcc     | 5VDC
 
-| Terminals | Connections
-|-----------|------------
-| 12VDC     | Charge controller Vload +, PWB 12VDC buss
-| Gnd       | Charge controller Vload -, PWB Gnd buss, B2, B3
-| Act Wht   | Encoder signal, PWB B70, Acutator white
-| Act Grn   | Encoder ground
-| Act Red   | Motor +, TB67H420 A+, Actuator Red
-| Act Blk   | Motor -, TB67H420 A-, Actuator Black
-| Act Blu   | Lock -, Gnd
-| Act Yel   | Lock +, Relay NO
-
 #### Gate actuator
 Actuator is a MM371W, made by MightyMule.
 Linear actuator has a 12VDC brushed motor. Motor has an inrush current of 16A and a no-load current of 1.6A.
@@ -156,3 +145,29 @@ Encoder2 is above through a comparitor set to .8V
 
 ENCODER_PULSE is pulsed high with shaft rotation, 9ms pulses at "full" speed
 ENCODER_LIMIT is set high when limit switch is hit
+
+
+## Redesign Aug 2024
+
+---------
+8/6/2024:
+
+ The 18650 charger that powered the esp32 died after the charger controller for the main cell
+ stopped turning on.
+
+ Plan: power the esp32 & LoRa radio directly from the battery. 
+ Place a current sensor in that power path
+
+ Power the linear actuator and gate lock directly from the battery as well
+ Prob want a current sensor for each of these.
+
+ Have a third switch and current sensor power the wifi/camera stuff
+
+ Do I seperate the esp32 module from the LoRa module?
+
+ how I'd like to make connections in the box:
+ https://www.mouser.com/c/connectors/terminal-blocks/fixed-terminal-blocks/?q=lever%20terminal%20block&wire%20gauge%20max=12%20AWG
+
+Completed the kicad schematic for this build
+
+

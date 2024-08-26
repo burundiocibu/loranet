@@ -16,7 +16,7 @@ Gate::Gate(LinearActuator* la_ptr, uint8_t lock_pin) :
     Logger::info("loaded closed_position:%d", closed_position);
 
     pinMode(lock_pin, OUTPUT);
-    digitalWrite(lock_pin, LOW);
+    digitalWrite(lock_pin, HIGH);
 
 }
 
@@ -26,7 +26,7 @@ void Gate::goto_position(float position)
 {
     if (get_position() < 2)
     {
-        digitalWrite(lock_pin, HIGH);
+        digitalWrite(lock_pin, LOW);
         Logger::trace("unlock");
     }
     actuator->goto_position(closed_position-closed_position*position/100);
@@ -98,14 +98,14 @@ bool Gate::update()
 
     int gp = get_position();
     int lock = digitalRead(lock_pin);
-    if (!lock && gp < 2 && actuator->get_speed() )
-    {
-        digitalWrite(lock_pin, HIGH);
-        Logger::trace("unlock");
-    }
-    else if (lock && gp > 3)
+    if (lock && gp < 2 && actuator->get_speed() )
     {
         digitalWrite(lock_pin, LOW);
+        Logger::trace("unlock");
+    }
+    else if (!lock && gp > 3)
+    {
+        digitalWrite(lock_pin, HIGH);
         Logger::trace("lock");
     }
  

@@ -5,15 +5,12 @@
 
 String status(bool include_scc=false)
 {
-    // LiIon pack directly connected to processor
-    // float vbat = analogRead(VBAT) * 1.31 * 3.3 / 1024;
-
     String msg;
-    //    msg += String("v1:") + String(vbat);
     msg = String("rssi:") + String(node->get_rssi());
     msg += String(",snr:") + String(node->get_snr());
     msg += String(",ut:") + String(int(uptime()));
     msg += String(",poe:") + String(digitalRead(POE_ENABLE));
+    msg += String(",wifi:") + String(WiFi.status());
     if (include_scc)
         msg += String(",") + scc->status();
     return msg;
@@ -23,7 +20,6 @@ void loop()
 {
     ota_handle();
 
-    Logger::set_level(Logger::Level::TRACE);
     String msg;
     byte sender;
     if (node->get_message(msg, sender))
@@ -94,7 +90,7 @@ void loop()
 
     if (millis() > 2000 && !digitalRead(USER_BUTTON1))
     {
-        gate->goto_position(0);
+        gate->stop();
         delay(400);
     }
 

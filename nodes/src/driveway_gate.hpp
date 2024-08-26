@@ -1,4 +1,3 @@
-// -*- coding: utf-8 -*-
 #include <Arduino.h>
 #include <U8g2lib.h>
 #include <Wire.h>
@@ -28,11 +27,9 @@
 
 #define NODE_ADDRESS 2
 
-#define VBAT 1  // connected to Vbatt through a 1/2 divider network
-
-#define GATE_LOCK 42
+#define GATE_LOCK 41
+#define POE_ENABLE 42
 #define REMOTE_RECEIVER 39
-#define POE_ENABLE 34
 
 #define MD10C_PWM_PIN 46
 #define MD10C_DIR_PIN 45
@@ -41,8 +38,8 @@
 #define ENCODER_PULSE_PIN 6
 #define ENCODER_LIMIT_PIN 7
 
-#define RENOGY_TXD 47
-#define RENOGY_RXD 33
+#define RENOGY_RXD 47
+#define RENOGY_TXD 33
 
 #define USER_BUTTON1 0
 
@@ -61,8 +58,8 @@ void setup()
 
     // Console
     Serial.begin(115200);
-    Logger::set_level(Logger::Level::INFO);
-    pinMode(VBAT, INPUT);
+    delay(5000);
+    Logger::set_level(Logger::Level::TRACE);
 
     pinMode(POE_ENABLE, OUTPUT);
     digitalWrite(POE_ENABLE, 1);
@@ -74,7 +71,7 @@ void setup()
     actuator = new LinearActuator(ENCODER_PULSE_PIN, ENCODER_LIMIT_PIN, motor);
     gate = new Gate(actuator, GATE_LOCK);
     
-    Serial1.begin(9600, SERIAL_8N1, RENOGY_TXD, RENOGY_RXD);
+    Serial1.begin(9600, SERIAL_8N1, RENOGY_RXD, RENOGY_TXD);
     scc = new RenogyRover(Serial1);
     scc->load_on(1);
 

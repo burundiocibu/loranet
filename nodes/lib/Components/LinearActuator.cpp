@@ -258,7 +258,7 @@ String LinearActuator::status()
         ",at:" + String(target_position) +
         ",al:" + String(digitalRead(limit_pin)) +
         ",ms:" + String(motor->get_speed()) +
-        ",aloe:" + String(last_open_error) +
+        ",aloe:" + String(last_open_error) +     
         ",asf:" + String(status_flags, HEX);
     return msg;
 }

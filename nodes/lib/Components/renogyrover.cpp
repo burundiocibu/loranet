@@ -13,7 +13,6 @@ uint16_t RenogyRover::read_register(uint16_t reg)
         return 0xffff;
     else {
         uint16_t resp = node.getResponseBuffer(0x0);
-        //Serial.println("Register " + String(reg, HEX) + ":" + String(resp));
         return resp;
     }
 }
@@ -37,7 +36,7 @@ String RenogyRover::status()
         msg += String(",dl:") + String(discharging_limit_voltage());
     }
     else
-        msg = String("cf:ce");
+        msg = String("cf:ce,bv:") + String(bv);
 
     return msg;
 }

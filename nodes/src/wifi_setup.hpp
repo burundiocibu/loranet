@@ -14,37 +14,40 @@
 
 void wifi_setup(const char* hostname)
 {
+    WiFi.disconnect(true);
     WiFi.mode(WIFI_STA);
     WiFi.setHostname(hostname);
+    WiFi.begin(ssid, password);
+
     ArduinoOTA.setHostname(hostname);
+    // Password can be set with it's md5 value as well
+    // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+    // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
     ArduinoOTA.setPassword(ota_password);
 }
 
 void ota_handle()
 {
     static bool ota_ready = false;
-    static unsigned long last_begin = 0;
 
-    if (ota_ready) {
+    if (ota_ready)
+    {
         ArduinoOTA.handle();
         return;
     }
 
-    if (WiFi.status() != WL_CONNECTED) {
-        if ((millis() - last_begin) > 5000) {
+    static unsigned long last_begin = 0;
+    wl_status_t wfs = WiFi.status();
+    if (wfs != WL_CONNECTED)
+    {
+        if (millis() - last_begin > 60000)
+        {
+            Logger::warning("wifi status: %x, wifi.begin", wfs);
             WiFi.begin(ssid, password);
-            Logger::info("wifi.begin again");
             last_begin = millis();
-            return;
         }
         return;
     }
-
-    Logger::info("WiFi Connected");
-
-  // Password can be set with it's md5 value as well
-  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
 
   ArduinoOTA
     .onStart([]() {
