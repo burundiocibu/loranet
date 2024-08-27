@@ -65,7 +65,7 @@ class LoRaBase():
             self.rfm9x.listen()
             self.tx_time = time.monotonic()
             dt = round(1000 * (time.perf_counter() - t0), 1)
-            logger.debug(f"tx to:{dest}, dt:{dt}, msg:{msg}")
+            logger.info(f"Tx to:{dest}, dt:{dt}, msg:{msg}")
             return True
 
 
