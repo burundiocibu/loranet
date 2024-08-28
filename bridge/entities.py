@@ -162,7 +162,7 @@ class Power(BaseEntity):
 class Temperature(BaseEntity):
     def __init__(self, name, device, mqtt_client):
         super().__init__(name, "temperature", "sensor", device, mqtt_client)
-        self.config.unit_of_measurement = "C"
+        self.config.unit_of_measurement = "°C"
         self.publish_discovery()
 
 class Distance(BaseEntity):
