@@ -20,13 +20,10 @@ class LPGauge(entities.LoRaNode):
         self.hall_voltage = entities.Voltage(f"{self.name} Hall Sensor Voltage", self.device_config, mqtt_client)
         self.lp_temperature = entities.Temperature(f"{self.name} Tank Temperature", self.device_config, mqtt_client)
         self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
-        self.rtt = entities.Sensor(f"{self.name} rtt", self.device_config, mqtt_client, "ms")
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
 
     def update(self, msg):
         self.rssi.publish_state(self.radio.rfm9x.last_rssi)
-        if 'rtt' in msg:
-            self.rtt.publish_state(int(msg['rtt']))
         if 'hv' in msg:
             self.hall_voltage.publish_state(float(msg["hv"]))
         if 't1' in msg:
