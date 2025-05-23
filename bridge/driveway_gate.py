@@ -55,6 +55,7 @@ class DrivewayGate(entities.LoRaNode):
         self.rssi = entities.RSSI(f"{self.name} RSSI", self.device_config, mqtt_client)
         self.snr = entities.SNR(f"{self.name} SNR", self.device_config, mqtt_client)
         self.uptime = entities.Sensor(f"{self.name} uptime", self.device_config, mqtt_client, "s")
+        self.wifi = entities.Sensor(f"{self.name} WiFI", self.device_config, mqtt_client)
 
         self.restart = entities.Button(f"{self.name} Restart", self.device_config, self.mqtt_client, icon="mdi:restart")
         self.mqtt_client.message_callback_add(self.restart.config.command_topic, self.restart_mqrx)
@@ -94,6 +95,9 @@ class DrivewayGate(entities.LoRaNode):
 
         if 'dl' in msg:
             self.scc_discharge_limit.publish_state(float(msg["dl"]))
+
+        if 'wifi' in msg:
+            self.wifi.publish_state(float(msg["wifi"]))
 
         if 'rr' in msg:
             self.remote_trigger.publish_state("ON")

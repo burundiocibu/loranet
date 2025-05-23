@@ -73,7 +73,7 @@ def main():
         logger.error("No username/password specified")
         return
 
-    mqtt_client.connect("duckling.groot")
+    mqtt_client.connect(os.environ.get("mqtt_hostname", "localhost"))
 
     mqtt_client.loop_start()
 
