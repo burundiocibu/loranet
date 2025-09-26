@@ -1,3 +1,4 @@
+adafruit-python-shell
 paho-mqtt
 prometheus_client
 adafruit-circuitpython-ssd1306

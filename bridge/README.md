@@ -12,10 +12,6 @@ define callbacks for objects that need
 ## raspberry pi config for bridge
 sudo apt install python3-pip python3-venv
 sudo pip3 install --upgrade setuptools
-sudo pip3 install --upgrade adafruit-python-shell
-wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/raspi-blinka.py
-sudo python3 raspi-blinka.py
-reboot
 
 ## python environment
 ```
@@ -23,6 +19,10 @@ cd loranet/bridge
 python3 -m venv .venv --system-site-packages
 . .venv/bin/activate
 pip install -r requirements.txt
+
+wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/raspi-blinka.py
+sudo -E env PATH=$PATH python3 raspi-blinka.py
+~~reboot~~
 
 
 ### systemd unit
